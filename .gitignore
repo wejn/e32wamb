@@ -5,3 +5,4 @@ managed_components
 sdkconfig
 sdkconfig.old
 screenlog.*
+Makefile
