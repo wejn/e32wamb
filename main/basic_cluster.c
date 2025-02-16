@@ -35,7 +35,7 @@ esp_err_t populate_basic_cluster_info(esp_zb_ep_list_t *ep_list, uint8_t endpoin
     } else {
         char build_id[17]; // size, 15B data, null terminator (not used)
         const esp_app_desc_t *app_desc = esp_app_get_description();
-        if (app_desc && app_desc->version) {
+        if (app_desc) {
             *build_id = (uint8_t) strlen(app_desc->version);
             if (((uint8_t) *build_id) > 15) {
                 *build_id = 15;
