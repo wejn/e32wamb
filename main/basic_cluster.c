@@ -33,13 +33,17 @@ esp_err_t populate_basic_cluster_info(esp_zb_ep_list_t *ep_list, uint8_t endpoin
     if (info && info->build_id) {
         ESP_ERROR_CHECK(esp_zb_basic_cluster_add_attr(basic_cluster, ESP_ZB_ZCL_ATTR_BASIC_SW_BUILD_ID, info->build_id));
     } else {
-        char build_id[18];
+        char build_id[17]; // size, 15B data, null terminator (not used)
         const esp_app_desc_t *app_desc = esp_app_get_description();
-        *build_id = (uint8_t) strlen(app_desc->version);
-        if (((uint8_t) *build_id) > 16) {
-            *build_id = 16;
+        if (app_desc && app_desc->version) {
+            *build_id = (uint8_t) strlen(app_desc->version);
+            if (((uint8_t) *build_id) > 15) {
+                *build_id = 15;
+            }
+            strncpy(build_id+1, app_desc->version, (size_t) *build_id + 1);
+        } else {
+            *build_id = 0;
         }
-        strncpy(build_id+1, app_desc->version, (size_t) *build_id);
         ESP_ERROR_CHECK(esp_zb_basic_cluster_add_attr(basic_cluster, ESP_ZB_ZCL_ATTR_BASIC_SW_BUILD_ID, &build_id));
     }
 
