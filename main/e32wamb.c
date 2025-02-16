@@ -1,17 +1,10 @@
 /*
- * SPDX-FileCopyrightText: 2021-2022 Espressif Systems (Shanghai) CO LTD
+ * ESP32 White Ambiance
+ * Written in 2025 by Michal Jirků (wejn)
  *
- * SPDX-License-Identifier: CC0-1.0
- *
- * Zigbee HA_color_dimmable_light Example
- *
- * This example code is in the Public Domain (or CC0 licensed, at your option.)
- *
- * Unless required by applicable law or agreed to in writing, this
- * software is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR
- * CONDITIONS OF ANY KIND, either express or implied.
+ * This code is licensed under AGPL version 3.
+ * Originally forked from https://github.com/wejn/esp32-huello-world.
  */
-
 #include "e32wamb.h"
 #include "esp_check.h"
 #include "esp_log.h"
@@ -128,7 +121,7 @@ static esp_err_t zb_attribute_handler(const esp_zb_zcl_set_attr_value_message_t 
                         message->info.status);
     ESP_LOGI(TAG, "Received message: endpoint(%d), cluster(0x%x), attribute(0x%x), data size(%d)", message->info.dst_endpoint, message->info.cluster,
              message->attribute.id, message->attribute.data.size);
-    if (message->info.dst_endpoint == HA_COLOR_DIMMABLE_LIGHT_ENDPOINT) {
+    if (message->info.dst_endpoint == MY_LIGHT_ENDPOINT) {
         switch (message->info.cluster) {
         case ESP_ZB_ZCL_CLUSTER_ID_ON_OFF:
             if (message->attribute.id == ESP_ZB_ZCL_ATTR_ON_OFF_ON_OFF_ID && message->attribute.data.type == ESP_ZB_ZCL_ATTR_TYPE_BOOL) {
@@ -203,23 +196,23 @@ static void esp_zb_task(void *pvParameters)
     esp_zb_ep_list_t *esp_zb_color_dimmable_light_ep = NULL;
     esp_zb_color_dimmable_light_ep = esp_zb_ep_list_create();
     esp_zb_endpoint_config_t endpoint_config = {
-        .endpoint = HA_COLOR_DIMMABLE_LIGHT_ENDPOINT,
+        .endpoint = MY_LIGHT_ENDPOINT,
         .app_profile_id = ESP_ZB_AF_HA_PROFILE_ID,
         .app_device_id = ESP_ZB_HA_COLOR_DIMMABLE_LIGHT_DEVICE_ID,
         .app_device_version = 1, // maybe important for Hue? Oh HELL yes.
     };
     esp_zb_ep_list_add_ep(esp_zb_color_dimmable_light_ep, esp_zb_color_dimmable_light_clusters_create(&light_cfg), endpoint_config);
     zcl_basic_manufacturer_info_t info = {
-        .manufacturer_name = ESP_MANUFACTURER_NAME,
-        .model_identifier = ESP_MODEL_IDENTIFIER,
+        .manufacturer_name = MY_MANUFACTURER_NAME,
+        .model_identifier = MY_MODEL_IDENTIFIER,
     };
 
-    esp_zcl_utility_add_ep_basic_manufacturer_info(esp_zb_color_dimmable_light_ep, HA_COLOR_DIMMABLE_LIGHT_ENDPOINT, &info);
+    esp_zcl_utility_add_ep_basic_manufacturer_info(esp_zb_color_dimmable_light_ep, MY_LIGHT_ENDPOINT, &info);
 
     // https://github.com/espressif/esp-zigbee-sdk/issues/457#issuecomment-2426128314
     uint16_t on_off_on_time = 0;
     bool on_off_global_scene_control = 0;
-    esp_zb_cluster_list_t *cluster_list = esp_zb_ep_list_get_ep(esp_zb_color_dimmable_light_ep, HA_COLOR_DIMMABLE_LIGHT_ENDPOINT);
+    esp_zb_cluster_list_t *cluster_list = esp_zb_ep_list_get_ep(esp_zb_color_dimmable_light_ep, MY_LIGHT_ENDPOINT);
     esp_zb_attribute_list_t *onoff_attr_list =
         esp_zb_cluster_list_get_cluster(cluster_list, ESP_ZB_ZCL_CLUSTER_ID_ON_OFF, ESP_ZB_ZCL_CLUSTER_SERVER_ROLE);
 
@@ -230,7 +223,7 @@ static void esp_zb_task(void *pvParameters)
 
     esp_zb_device_register(esp_zb_color_dimmable_light_ep);
     esp_zb_core_action_handler_register(zb_action_handler);
-    esp_zb_set_primary_network_channel_set(ESP_ZB_PRIMARY_CHANNEL_MASK);
+    esp_zb_set_primary_network_channel_set(ESP_ZB_TRANSCEIVER_ALL_CHANNELS_MASK);
     ESP_ERROR_CHECK(esp_zb_start(false));
     esp_zb_stack_main_loop();
 }
