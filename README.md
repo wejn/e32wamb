@@ -18,6 +18,16 @@ To compile:
 ./in-docker.sh idf.py set-target esp32-c6 build
 ```
 
+To flash:
+
+``` sh
+# pipx install esptool
+cd build
+esptool.py --chip esp32c6 -b 460800 \
+  --before default_reset --after hard_reset \
+  write_flash "@flash_args"
+```
+
 To clean up:
 
 ``` sh
