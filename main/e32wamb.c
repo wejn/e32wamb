@@ -12,7 +12,6 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "ha/esp_zigbee_ha_standard.h"
-#include "zcl/esp_zigbee_zcl_basic.h"
 #include "basic_cluster.h"
 
 #if !defined CONFIG_ZB_ZCZR
