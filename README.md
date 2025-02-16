@@ -15,6 +15,8 @@ For background info see
 To compile:
 
 ``` sh
+cp main/trust_center_key.h.in main/trust_center_key.h
+# edit main/trust_center_key.h to set correct tc key
 ./in-docker.sh idf.py set-target esp32-c6 build
 ```
 

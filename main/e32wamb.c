@@ -12,7 +12,7 @@
  * CONDITIONS OF ANY KIND, either express or implied.
  */
 
-#include "esp_zb_light.h"
+#include "e32wamb.h"
 #include "esp_check.h"
 #include "esp_log.h"
 #include "nvs_flash.h"
@@ -22,6 +22,17 @@
 
 #if !defined CONFIG_ZB_ZCZR
 #error Define ZB_ZCZR in idf.py menuconfig to compile light (Router) source code.
+#endif
+
+#if defined HAVE_TRUST_CENTER_KEY
+#include "trust_center_key.h"
+#else
+#warning I do not have proper trust_center_key.h present, this will NOT link to Hue bridge.
+// this is not the correct key, replace it with the proper one in trust_center_key.h
+#define TRUST_CENTER_KEY { \
+    0x00, 0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77, \
+    0x88, 0x99, 0xAA, 0xBB, 0xCC, 0xDD, 0xEE, 0xFF \
+}
 #endif
 
 static const char *TAG = "ESP_ZB_COLOR_DIMM_LIGHT";
@@ -185,11 +196,7 @@ static void esp_zb_task(void *pvParameters)
 
     // allow joining the Philips Hue network(s)
     esp_zb_enable_joining_to_distributed(true);
-    uint8_t secret_zll_trust_center_key[] = {
-        // FIXME: this is not the correct key, replace it with the proper one
-        0x00, 0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77,
-        0x88, 0x99, 0xAA, 0xBB, 0xCC, 0xDD, 0xEE, 0xFF
-    };
+    uint8_t secret_zll_trust_center_key[] = TRUST_CENTER_KEY;
     esp_zb_secur_TC_standard_distributed_key_set(secret_zll_trust_center_key);
 
     esp_zb_color_dimmable_light_cfg_t light_cfg = ESP_ZB_DEFAULT_COLOR_DIMMABLE_LIGHT_CONFIG();

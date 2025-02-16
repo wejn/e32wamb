@@ -1,0 +1,14 @@
+#ifndef _TRUST_CENTER_KEY_H_
+#define _TRUST_CENTER_KEY_H_
+
+// This should be replaced by the proper Philips Trust center key.
+// Or whatever distributed security center key you happen to be using.
+//
+// Some hints for the proper key in the following blog post:
+// https://wejn.org/2025/01/zigbee-hue-llo-world/#trust-center-link-key
+#define TRUST_CENTER_KEY { \
+    0x00, 0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77, \
+    0x88, 0x99, 0xAA, 0xBB, 0xCC, 0xDD, 0xEE, 0xFF \
+}
+
+#endif
