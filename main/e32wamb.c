@@ -28,7 +28,8 @@
 }
 #endif
 
-static const char *TAG = "ESP_ZB_COLOR_DIMM_LIGHT";
+static const char *TAG = "E32WAMB";
+
 /********************* Define functions **************************/
 static esp_err_t deferred_driver_init(void)
 {
