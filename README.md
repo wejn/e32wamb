@@ -1,14 +1,16 @@
-# ESP32 Lightbulb example that works with Hue bridge
+# Hue White Ambiance replacement using ESP32
 
-This is Espressif's [HA_color_dimmable_light](https://github.com/espressif/esp-zigbee-sdk/tree/a943a9118e9ad110e2641e1187fd4c5d533f8a06/examples/esp_zigbee_HA_sample/HA_color_dimmable_light)
-adjusted to successfully link against Hue bridge, and function
-like a properly behaved light (mostly).
+**Note: This is work in progress, not guaranteed to be usable in any way.
+If you want working (but minimal) example, see
+[esp32-huello-world](https://github.com/wejn/esp32-huello-world) repo.**
 
-Mind you, you'll need to adjust the trust center link key
-(heed the `FIXME` in `main/esp_zb_light.c`).
+This will be a firmware for my Hue White Ambiance replacement driver
+suitable for my "Beng Ceiling Light" from Philips.
 
-Details in my [Zigbee: Hue-llo world!](https://wejn.org/2025/01/zigbee-hue-llo-world/)
-blog post.
+For background info see
+[Reversing Philips Hue light driver](https://wejn.org/2024/12/reversing-philips-hue-light-driver/).
+
+## Compilation
 
 To compile:
 
