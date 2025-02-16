@@ -8,7 +8,6 @@
 
 #include "esp_zigbee_core.h"
 #include "light_driver.h"
-#include "zcl_utility.h"
 
 /* Zigbee configuration */
 #define MY_LIGHT_ENDPOINT 10
@@ -16,6 +15,7 @@
 /* Basic manufacturer information */
 #define MY_MANUFACTURER_NAME "\x08""wejn.org"
 #define MY_MODEL_IDENTIFIER "\x07""e32wamb"
+#define MY_DATE_CODE "\x08""20250216"
 
 #define ESP_ZB_ZR_CONFIG()                         \
     {                                              \

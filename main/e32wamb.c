@@ -12,6 +12,8 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "ha/esp_zigbee_ha_standard.h"
+#include "zcl/esp_zigbee_zcl_basic.h"
+#include "basic_cluster.h"
 
 #if !defined CONFIG_ZB_ZCZR
 #error Define ZB_ZCZR in idf.py menuconfig to compile light (Router) source code.
@@ -194,6 +196,7 @@ static void esp_zb_task(void *pvParameters)
     esp_zb_secur_TC_standard_distributed_key_set(secret_zll_trust_center_key);
 
     esp_zb_color_dimmable_light_cfg_t light_cfg = ESP_ZB_DEFAULT_COLOR_DIMMABLE_LIGHT_CONFIG();
+    light_cfg.basic_cfg.power_source = 0x01; // mains
     esp_zb_ep_list_t *esp_zb_color_dimmable_light_ep = NULL;
     esp_zb_color_dimmable_light_ep = esp_zb_ep_list_create();
     esp_zb_endpoint_config_t endpoint_config = {
@@ -203,12 +206,13 @@ static void esp_zb_task(void *pvParameters)
         .app_device_version = 1, // maybe important for Hue? Oh HELL yes.
     };
     esp_zb_ep_list_add_ep(esp_zb_color_dimmable_light_ep, esp_zb_color_dimmable_light_clusters_create(&light_cfg), endpoint_config);
-    zcl_basic_manufacturer_info_t info = {
+    basic_info_t info = {
         .manufacturer_name = MY_MANUFACTURER_NAME,
         .model_identifier = MY_MODEL_IDENTIFIER,
+        .date_code = MY_DATE_CODE,
     };
 
-    esp_zcl_utility_add_ep_basic_manufacturer_info(esp_zb_color_dimmable_light_ep, MY_LIGHT_ENDPOINT, &info);
+    populate_basic_cluster_info(esp_zb_color_dimmable_light_ep, MY_LIGHT_ENDPOINT, &info);
 
     // https://github.com/espressif/esp-zigbee-sdk/issues/457#issuecomment-2426128314
     uint16_t on_off_on_time = 0;
