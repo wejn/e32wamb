@@ -22,7 +22,7 @@ typedef struct basic_info_s {
 	char *date_code; // up to 16 bytes, optional
 } basic_info_t;
 
-esp_err_t populate_basic_cluster_info(esp_zb_ep_list_t *ep_list, uint8_t endpoint_id, basic_info_t *info);
+esp_err_t populate_basic_cluster_info(esp_zb_cluster_list_t *cluster_list, basic_info_t *info);
 
 #ifdef __cplusplus
 } // extern "C"

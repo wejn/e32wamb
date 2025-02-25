@@ -13,16 +13,13 @@
 
 static const char *TAG = "BASIC_CLUSTER";
 
-esp_err_t populate_basic_cluster_info(esp_zb_ep_list_t *ep_list, uint8_t endpoint_id, basic_info_t *info)
+esp_err_t populate_basic_cluster_info(esp_zb_cluster_list_t *cluster_list, basic_info_t *info)
 {
     esp_err_t ret = ESP_OK;
-    esp_zb_cluster_list_t *cluster_list = NULL;
     esp_zb_attribute_list_t *basic_cluster = NULL;
 
-    cluster_list = esp_zb_ep_list_get_ep(ep_list, endpoint_id);
-    ESP_RETURN_ON_FALSE(cluster_list, ESP_ERR_INVALID_ARG, TAG, "Failed to find endpoint id: %d in list: %p", endpoint_id, ep_list);
     basic_cluster = esp_zb_cluster_list_get_cluster(cluster_list, ESP_ZB_ZCL_CLUSTER_ID_BASIC, ESP_ZB_ZCL_CLUSTER_SERVER_ROLE);
-    ESP_RETURN_ON_FALSE(basic_cluster, ESP_ERR_INVALID_ARG, TAG, "Failed to find basic cluster in endpoint: %d", endpoint_id);
+    ESP_RETURN_ON_FALSE(basic_cluster, ESP_ERR_INVALID_ARG, TAG, "Failed to find basic cluster");
 
     ESP_RETURN_ON_FALSE((info && info->manufacturer_name), ESP_ERR_INVALID_ARG, TAG, "Invalid manufacturer name");
     ESP_ERROR_CHECK(esp_zb_basic_cluster_add_attr(basic_cluster, ESP_ZB_ZCL_ATTR_BASIC_MANUFACTURER_NAME_ID, info->manufacturer_name));
