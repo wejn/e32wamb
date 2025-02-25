@@ -18,8 +18,8 @@ extern "C" {
 typedef struct basic_info_s {
     char *manufacturer_name; // up to 32 bytes
     char *model_identifier; // up to 32 bytes
-	char *build_id; // up to 16 bytes, auto-filled in from app_desc->version
-	char *date_code; // up to 16 bytes, optional
+    char *build_id; // up to 16 bytes, auto-filled in from app_desc->version
+    char *date_code; // up to 16 bytes, optional
 } basic_info_t;
 
 esp_err_t populate_basic_cluster_info(esp_zb_cluster_list_t *cluster_list, basic_info_t *info);
