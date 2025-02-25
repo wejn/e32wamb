@@ -201,7 +201,7 @@ static void esp_zb_task(void *pvParameters)
         .endpoint = MY_LIGHT_ENDPOINT,
         .app_profile_id = ESP_ZB_AF_HA_PROFILE_ID,
         .app_device_id = MY_DEVICE_ID,
-        .app_device_version = 2,
+        .app_device_version = MY_DEVICE_VERSION,
     };
     esp_zb_ep_list_add_ep(esp_zb_color_dimmable_light_ep, esp_zb_color_dimmable_light_clusters_create(&light_cfg), endpoint_config);
     basic_info_t info = {
