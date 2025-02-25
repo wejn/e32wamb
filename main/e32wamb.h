@@ -8,15 +8,10 @@
 
 #include "esp_zigbee_core.h"
 #include "light_driver.h"
+#include "basic_cluster.h"
 
 /* Zigbee configuration */
 #define MY_LIGHT_ENDPOINT 10
-
-/* Basic manufacturer information */
-#define MY_MANUFACTURER_NAME "\x08""wejn.org"
-#define MY_MODEL_IDENTIFIER "\x07""e32wamb"
-#define MY_DATE_CODE "\x08""20250216"
-#define MY_DEVICE_VERSION 2
 
 #define ESP_ZB_ZR_CONFIG()                         \
     {                                              \
@@ -38,6 +33,19 @@
     }
 
 #define MY_DEVICE_ID 0x010c // Color Temperature Light, as per ZB Doc 15-0014-05, p.22
+
+#define MY_EP_CONFIG() { \
+    .endpoint = MY_LIGHT_ENDPOINT, \
+    .app_profile_id = ESP_ZB_AF_HA_PROFILE_ID, \
+    .app_device_id = MY_DEVICE_ID, \
+    .app_device_version = 2, \
+}
+
+#define MY_BASIC_INFO() { \
+    .manufacturer_name = "\x08""wejn.org", \
+    .model_identifier = "\x07""e32wamb", \
+    .date_code = "\x08""20250216", \
+}
 
 #define MY_LIGHT_CONFIG()                                                                \
     {                                                                                    \

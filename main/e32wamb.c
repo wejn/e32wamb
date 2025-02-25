@@ -194,24 +194,15 @@ static void esp_zb_task(void *pvParameters)
     uint8_t secret_zll_trust_center_key[] = TRUST_CENTER_KEY;
     esp_zb_secur_TC_standard_distributed_key_set(secret_zll_trust_center_key);
 
-    esp_zb_ep_list_t *esp_zb_color_dimmable_light_ep = esp_zb_ep_list_create();
+    esp_zb_ep_list_t *light_ep = esp_zb_ep_list_create();
 
     esp_zb_color_dimmable_light_cfg_t light_cfg = MY_LIGHT_CONFIG();
     esp_zb_cluster_list_t *cluster_list = esp_zb_color_dimmable_light_clusters_create(&light_cfg);
 
-    esp_zb_endpoint_config_t endpoint_config = {
-        .endpoint = MY_LIGHT_ENDPOINT,
-        .app_profile_id = ESP_ZB_AF_HA_PROFILE_ID,
-        .app_device_id = MY_DEVICE_ID,
-        .app_device_version = MY_DEVICE_VERSION,
-    };
-    esp_zb_ep_list_add_ep(esp_zb_color_dimmable_light_ep, cluster_list, endpoint_config);
+    esp_zb_endpoint_config_t endpoint_config = MY_EP_CONFIG();
+    esp_zb_ep_list_add_ep(light_ep, cluster_list, endpoint_config);
 
-    basic_info_t info = {
-        .manufacturer_name = MY_MANUFACTURER_NAME,
-        .model_identifier = MY_MODEL_IDENTIFIER,
-        .date_code = MY_DATE_CODE,
-    };
+    basic_info_t info = MY_BASIC_INFO();
     populate_basic_cluster_info(cluster_list, &info);
 
     // https://github.com/espressif/esp-zigbee-sdk/issues/457#issuecomment-2426128314
@@ -225,7 +216,7 @@ static void esp_zb_task(void *pvParameters)
             &on_off_global_scene_control);
     // .
 
-    esp_zb_device_register(esp_zb_color_dimmable_light_ep);
+    esp_zb_device_register(light_ep);
     esp_zb_core_action_handler_register(zb_action_handler);
     esp_zb_set_primary_network_channel_set(ESP_ZB_TRANSCEIVER_ALL_CHANNELS_MASK);
     ESP_ERROR_CHECK(esp_zb_start(false));
