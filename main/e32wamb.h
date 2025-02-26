@@ -9,6 +9,7 @@
 #include "esp_zigbee_core.h"
 #include "light_driver.h"
 #include "basic_cluster.h"
+#include "light_config.h"
 
 /* Zigbee configuration */
 #define MY_LIGHT_ENDPOINT 10
@@ -32,22 +33,32 @@
         .host_connection_mode = ZB_HOST_CONNECTION_MODE_NONE,   \
     }
 
-#define MY_DEVICE_ID 0x010c // Color Temperature Light, as per ZB Doc 15-0014-05, p.22
-
 #define MY_EP_CONFIG() { \
     .endpoint = MY_LIGHT_ENDPOINT, \
     .app_profile_id = ESP_ZB_AF_HA_PROFILE_ID, \
-    .app_device_id = MY_DEVICE_ID, \
+    .app_device_id = 0x010c, /* Color Temperature Light, as per ZB Doc 15-0014-05, p.22 */ \
     .app_device_version = 2, \
 }
 
-#define MY_BASIC_INFO() { \
+#define MY_LIGHT_CONFIG() { \
     .manufacturer_name = "\x08""wejn.org", \
     .model_identifier = "\x07""e32wamb", \
     .date_code = "\x08""20250216", \
+    .power_source = 0x01, \
+    .onoff = 1, \
+    .startup_onoff = 1, \
+    .level_options = 0, \
+    .level = 254, \
+    .startup_level = 254, \
+    .color_options = 0, \
+    .temp = 400, \
+    .startup_temp = 400, \
+    .min_temp = 153, \
+    .max_temp = 454, \
+    .couple_min_temp = 153, \
 }
 
-#define MY_LIGHT_CONFIG()                                                                \
+#define DIMMABLE_LIGHT_CONFIG()                                                          \
     {                                                                                    \
         .basic_cfg =                                                                     \
             {                                                                            \

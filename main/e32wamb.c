@@ -13,6 +13,7 @@
 #include "freertos/task.h"
 #include "ha/esp_zigbee_ha_standard.h"
 #include "basic_cluster.h"
+#include "light_config.h"
 
 #if !defined CONFIG_ZB_ZCZR
 #error Define ZB_ZCZR in idf.py menuconfig to compile light (Router) source code.
@@ -196,25 +197,12 @@ static void esp_zb_task(void *pvParameters)
 
     esp_zb_ep_list_t *light_ep = esp_zb_ep_list_create();
 
-    esp_zb_color_dimmable_light_cfg_t light_cfg = MY_LIGHT_CONFIG();
-    esp_zb_cluster_list_t *cluster_list = esp_zb_color_dimmable_light_clusters_create(&light_cfg);
+    my_light_cfg_t mlc = MY_LIGHT_CONFIG();
+    my_light_restore_cfg_from_flash(&mlc); // FIXME: error checking?
+    esp_zb_cluster_list_t *cluster_list = my_light_clusters_create(&mlc);
 
     esp_zb_endpoint_config_t endpoint_config = MY_EP_CONFIG();
     esp_zb_ep_list_add_ep(light_ep, cluster_list, endpoint_config);
-
-    basic_info_t info = MY_BASIC_INFO();
-    populate_basic_cluster_info(cluster_list, &info);
-
-    // https://github.com/espressif/esp-zigbee-sdk/issues/457#issuecomment-2426128314
-    uint16_t on_off_on_time = 0;
-    bool on_off_global_scene_control = 0;
-    esp_zb_attribute_list_t *onoff_attr_list =
-        esp_zb_cluster_list_get_cluster(cluster_list, ESP_ZB_ZCL_CLUSTER_ID_ON_OFF, ESP_ZB_ZCL_CLUSTER_SERVER_ROLE);
-
-    esp_zb_on_off_cluster_add_attr(onoff_attr_list, ESP_ZB_ZCL_ATTR_ON_OFF_ON_TIME, &on_off_on_time);
-    esp_zb_on_off_cluster_add_attr(onoff_attr_list, ESP_ZB_ZCL_ATTR_ON_OFF_GLOBAL_SCENE_CONTROL,
-            &on_off_global_scene_control);
-    // .
 
     esp_zb_device_register(light_ep);
     esp_zb_core_action_handler_register(zb_action_handler);
