@@ -40,10 +40,14 @@
     .app_device_version = 2, \
 }
 
+#define TOSTRING(x) #x
+#define STRINGIFY(x) TOSTRING(x)
+
 #define MY_LIGHT_CONFIG() { \
     .manufacturer_name = "\x08""wejn.org", \
     .model_identifier = "\x07""e32wamb", \
-    .date_code = "\x08""20250216", \
+    .date_code = "\x0e" STRINGIFY(BUILD_DATE_CODE), \
+    /* FIXME: fill in .build_id to GIT_FULL_REV_ID, but it needs sz prefix */ \
     .power_source = 0x01, \
     .onoff = 1, \
     .startup_onoff = 1, \
