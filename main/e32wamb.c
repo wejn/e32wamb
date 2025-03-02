@@ -77,6 +77,7 @@ void esp_zb_app_signal_handler(esp_zb_app_signal_t *signal_struct)
                      extended_pan_id[3], extended_pan_id[2], extended_pan_id[1], extended_pan_id[0],
                      esp_zb_get_pan_id(), esp_zb_get_current_channel(), esp_zb_get_short_address());
         } else {
+            // FIXME: How about saying something like -- network not joined yet
             ESP_LOGI(TAG, "Network steering was not successful (status: %s)", esp_err_to_name(err_status));
             esp_zb_scheduler_alarm((esp_zb_callback_t)bdb_start_top_level_commissioning_cb, ESP_ZB_BDB_MODE_NETWORK_STEERING, 1000);
         }
@@ -105,6 +106,7 @@ void esp_zb_app_signal_handler(esp_zb_app_signal_t *signal_struct)
             ESP_LOGI(TAG, "ZDO leave: (no params), status: %s", esp_err_to_name(err_status));
         }
         break;
+    // FIXME: swallow NLME Status Indication (0x32) as no-op
     default:
         ESP_LOGI(TAG, "ZDO signal: %s (0x%x), status: %s", esp_zb_zdo_signal_to_string(sig_type), sig_type, esp_err_to_name(err_status));
         break;
@@ -124,6 +126,7 @@ static esp_err_t zb_attribute_handler(const esp_zb_zcl_set_attr_value_message_t 
     ESP_LOGI(TAG, "Received message: endpoint(%d), cluster(0x%x), attribute(0x%x), data size(%d)", message->info.dst_endpoint, message->info.cluster,
              message->attribute.id, message->attribute.data.size);
     if (message->info.dst_endpoint == MY_LIGHT_ENDPOINT) {
+        // FIXME: There's bunch of other variables to be handled in all of the clusters
         switch (message->info.cluster) {
         case ESP_ZB_ZCL_CLUSTER_ID_ON_OFF:
             if (message->attribute.id == ESP_ZB_ZCL_ATTR_ON_OFF_ON_OFF_ID && message->attribute.data.type == ESP_ZB_ZCL_ATTR_TYPE_BOOL) {
@@ -149,6 +152,7 @@ static esp_err_t zb_attribute_handler(const esp_zb_zcl_set_attr_value_message_t 
                                      ->data_p;
                 ESP_LOGI(TAG, "Light color y changes to 0x%x", light_color_y);
             } else {
+                // FIXME: Color control cluster data: attribute(0x7), type(0x21) is the color temp ;)
                 ESP_LOGW(TAG, "Color control cluster data: attribute(0x%x), type(0x%x)", message->attribute.id, message->attribute.data.type);
             }
             light_driver_set_color_xy(light_color_x, light_color_y);
