@@ -36,7 +36,7 @@
     .endpoint = MY_LIGHT_ENDPOINT, \
     .app_profile_id = ESP_ZB_AF_HA_PROFILE_ID, \
     .app_device_id = 0x010c, /* Color Temperature Light, as per ZB Doc 15-0014-05, p.22 */ \
-    .app_device_version = 2, \
+    .app_device_version = 1, \
 }
 
 #define MY_LIGHT_CONFIG() { \
