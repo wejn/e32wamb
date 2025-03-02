@@ -1,7 +1,7 @@
 # This makes the following variables available:
 # - BUILD_TIMESTAMP = "%Y%m%d%H%M%S" (UTC)
 # - GIT_SHORT_REV = 7 char revision short
-# - GIT_DIRTY_SUFFIX = "-dirty" if there are uncommited changes
+# - GIT_DIRTY_SUFFIX = "-dirty" if there are uncommitted changes
 # - GIT_FULL_REV_ID = "${GIT_SHORT_REV}${GIT_DIRTY_SUFFIX}"
 # which is useful for project versioning.
 #
@@ -12,7 +12,7 @@
 # /project dir and /opt/.../openthread are marked safe for git. Which avoids
 # a verbose failure (to obtain the needed info).
 #
-# Also provides `force_reconfig` custom target that forces cmake reconfig every
+# Also provides `force_reconfig` custom target that forces CMake reconfig every
 # time a given dependency gets built. That's needed to keep the above variables
 # fresh. But you need to plug it in as dependency of your main binary.
 #
@@ -20,6 +20,12 @@
 #
 # Written in 2025 by Michal Jirků (wejn)
 # License: CC0 or public domain (whatever's more pleasant for you)
+#
+# ---
+#
+# See
+# https://wejn.org/2025/03/howto-timestamp-and-githash-esp32-firmware-builds/
+# for background.
 
 cmake_minimum_required(VERSION 3.16)
 
@@ -68,4 +74,3 @@ add_custom_target(force_reconfig
     # I'm not proud of this, but it's needed to get a fresh version every time
     COMMAND touch ${CMAKE_BINARY_DIR}/CMakeCache.txt
 )
-
