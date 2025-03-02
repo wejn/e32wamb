@@ -6,3 +6,4 @@ sdkconfig
 sdkconfig.old
 screenlog.*
 Makefile
+notes.txt
