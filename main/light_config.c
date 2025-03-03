@@ -142,7 +142,7 @@ esp_zb_cluster_list_t *my_light_clusters_create(my_light_cfg_t *light_cfg) {
     esp_zb_attribute_list_t *on_off_attr = esp_zb_on_off_cluster_create(&on_off_cfg);
 
     uint16_t on_off_on_time = 0;
-    bool on_off_global_scene_control = 0;
+    bool on_off_global_scene_control = 1;
     uint16_t off_wait_time = 0;
     ADD_OR_WARN(esp_zb_on_off_cluster_add_attr, on_off_attr, ESP_ZB_ZCL_ATTR_ON_OFF_ON_TIME, &on_off_on_time);
     ADD_OR_WARN(esp_zb_on_off_cluster_add_attr, on_off_attr, ESP_ZB_ZCL_ATTR_ON_OFF_OFF_WAIT_TIME, &off_wait_time);

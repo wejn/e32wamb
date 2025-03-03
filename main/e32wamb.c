@@ -148,15 +148,15 @@ static esp_err_t onoff_attribute_handler(const esp_zb_zcl_set_attr_value_message
         case ESP_ZB_ZCL_ATTR_ON_OFF_ON_TIME: // uint16
             IF_ATTR_IS_TYPE("onoff", "on_time", ESP_ZB_ZCL_ATTR_TYPE_U16) {
                 on_time = DATA_OR(uint16_t, on_time);
-                // FIXME: implement
                 ESP_LOGI(TAG, "On time: %u", on_time);
+                // no-op, handled internally by zboss
             }
             break;
         case ESP_ZB_ZCL_ATTR_ON_OFF_OFF_WAIT_TIME: // uint16
             IF_ATTR_IS_TYPE("onoff", "off_wait_time", ESP_ZB_ZCL_ATTR_TYPE_U16) {
                 off_wait_time = DATA_OR(uint16_t, off_wait_time);
-                // FIXME: implement
                 ESP_LOGI(TAG, "Off wait time: %u", off_wait_time);
+                // no-op, handled internally by zboss
             }
             break;
         case ESP_ZB_ZCL_ATTR_ON_OFF_START_UP_ON_OFF: // enum8
