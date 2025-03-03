@@ -34,7 +34,7 @@ static const char *TAG = "E32WAMB";
 /********************* Define functions **************************/
 static esp_err_t deferred_driver_init(void)
 {
-    light_driver_init(LIGHT_DEFAULT_OFF);
+    // XXX: light_driver_init(LIGHT_DEFAULT_OFF);
     return ESP_OK;
 }
 
@@ -106,83 +106,184 @@ void esp_zb_app_signal_handler(esp_zb_app_signal_t *signal_struct)
             ESP_LOGI(TAG, "ZDO leave: (no params), status: %s", esp_err_to_name(err_status));
         }
         break;
-    // FIXME: swallow NLME Status Indication (0x32) as no-op
+    case ESP_ZB_NLME_STATUS_INDICATION:
+        ESP_LOGI(TAG, "Network status: 0x%x", *(uint8_t *)esp_zb_app_signal_get_params(p_sg_p));
+        // no-op, this is likely something like "alive" heartbeat
+        break;
+    case ESP_ZB_NWK_SIGNAL_NO_ACTIVE_LINKS_LEFT:
+        ESP_LOGI(TAG, "No longer connected to coordinator!");
+        break;
+    case ESP_ZB_ZDO_SIGNAL_DEVICE_ANNCE:
+        ESP_LOGI(TAG, "Rejoined network.");
+        break;
     default:
         ESP_LOGI(TAG, "ZDO signal: %s (0x%x), status: %s", esp_zb_zdo_signal_to_string(sig_type), sig_type, esp_err_to_name(err_status));
         break;
     }
 }
 
-static esp_err_t zb_attribute_handler(const esp_zb_zcl_set_attr_value_message_t *message)
-{
-    esp_err_t ret = ESP_OK;
+#define DATA_OR(type, deflt) (message->attribute.data.value ? *(type *)message->attribute.data.value : deflt)
+#define WARN_UNKNOWN(cluster) \
+    ESP_LOGW(TAG, "%s attr: unknown attribute(0x%x), type(0x%x), data size(%d)", cluster, message->attribute.id, message->attribute.data.type, message->attribute.data.size)
+#define IF_ATTR_IS_TYPE(cluster, attr, attr_type) \
+    if (message->attribute.data.type != attr_type) { \
+        ESP_LOGW(TAG, "%s: unexpected type for %s: expected %s, got type(0x%x) with size(%d)", cluster, attr, #attr_type, message->attribute.data.type, message->attribute.data.size); \
+    } else
+
+static esp_err_t onoff_attribute_handler(const esp_zb_zcl_set_attr_value_message_t *message) {
     bool light_state = 0;
-    uint8_t light_level = 0;
-    uint16_t light_color_x = 0;
-    uint16_t light_color_y = 0;
-    ESP_RETURN_ON_FALSE(message, ESP_FAIL, TAG, "Empty message");
-    ESP_RETURN_ON_FALSE(message->info.status == ESP_ZB_ZCL_STATUS_SUCCESS, ESP_ERR_INVALID_ARG, TAG, "Received message: error status(%d)",
-                        message->info.status);
-    ESP_LOGI(TAG, "Received message: endpoint(%d), cluster(0x%x), attribute(0x%x), data size(%d)", message->info.dst_endpoint, message->info.cluster,
-             message->attribute.id, message->attribute.data.size);
-    if (message->info.dst_endpoint == MY_LIGHT_ENDPOINT) {
-        // FIXME: There's bunch of other variables to be handled in all of the clusters
-        switch (message->info.cluster) {
-        case ESP_ZB_ZCL_CLUSTER_ID_ON_OFF:
-            if (message->attribute.id == ESP_ZB_ZCL_ATTR_ON_OFF_ON_OFF_ID && message->attribute.data.type == ESP_ZB_ZCL_ATTR_TYPE_BOOL) {
-                light_state = message->attribute.data.value ? *(bool *)message->attribute.data.value : light_state;
+    uint16_t on_time = 0;
+    uint16_t off_wait_time = 0;
+    uint8_t startup_onoff = 0;
+
+    switch (message->attribute.id) {
+        case ESP_ZB_ZCL_ATTR_ON_OFF_ON_OFF_ID:
+            IF_ATTR_IS_TYPE("onoff", "onoff", ESP_ZB_ZCL_ATTR_TYPE_BOOL) {
+                light_state = DATA_OR(bool, light_state);
+                // FIXME: implement
+                // XXX: light_driver_set_power(light_state);
                 ESP_LOGI(TAG, "Light sets to %s", light_state ? "On" : "Off");
-                light_driver_set_power(light_state);
-            } else {
-                ESP_LOGW(TAG, "On/Off cluster data: attribute(0x%x), type(0x%x)", message->attribute.id, message->attribute.data.type);
             }
             break;
-        case ESP_ZB_ZCL_CLUSTER_ID_COLOR_CONTROL:
-            if (message->attribute.id == ESP_ZB_ZCL_ATTR_COLOR_CONTROL_CURRENT_X_ID && message->attribute.data.type == ESP_ZB_ZCL_ATTR_TYPE_U16) {
-                light_color_x = message->attribute.data.value ? *(uint16_t *)message->attribute.data.value : light_color_x;
-                light_color_y = *(uint16_t *)esp_zb_zcl_get_attribute(message->info.dst_endpoint, message->info.cluster,
-                                                                      ESP_ZB_ZCL_CLUSTER_SERVER_ROLE, ESP_ZB_ZCL_ATTR_COLOR_CONTROL_CURRENT_Y_ID)
-                                     ->data_p;
-                ESP_LOGI(TAG, "Light color x changes to 0x%x", light_color_x);
-            } else if (message->attribute.id == ESP_ZB_ZCL_ATTR_COLOR_CONTROL_CURRENT_Y_ID &&
-                       message->attribute.data.type == ESP_ZB_ZCL_ATTR_TYPE_U16) {
-                light_color_y = message->attribute.data.value ? *(uint16_t *)message->attribute.data.value : light_color_y;
-                light_color_x = *(uint16_t *)esp_zb_zcl_get_attribute(message->info.dst_endpoint, message->info.cluster,
-                                                                      ESP_ZB_ZCL_CLUSTER_SERVER_ROLE, ESP_ZB_ZCL_ATTR_COLOR_CONTROL_CURRENT_X_ID)
-                                     ->data_p;
-                ESP_LOGI(TAG, "Light color y changes to 0x%x", light_color_y);
-            } else {
-                // FIXME: Color control cluster data: attribute(0x7), type(0x21) is the color temp ;)
-                ESP_LOGW(TAG, "Color control cluster data: attribute(0x%x), type(0x%x)", message->attribute.id, message->attribute.data.type);
+        case ESP_ZB_ZCL_ATTR_ON_OFF_ON_TIME: // uint16
+            IF_ATTR_IS_TYPE("onoff", "on_time", ESP_ZB_ZCL_ATTR_TYPE_U16) {
+                on_time = DATA_OR(uint16_t, on_time);
+                // FIXME: implement
+                ESP_LOGI(TAG, "On time: %u", on_time);
             }
-            light_driver_set_color_xy(light_color_x, light_color_y);
             break;
-        case ESP_ZB_ZCL_CLUSTER_ID_LEVEL_CONTROL:
-            if (message->attribute.id == ESP_ZB_ZCL_ATTR_LEVEL_CONTROL_CURRENT_LEVEL_ID && message->attribute.data.type == ESP_ZB_ZCL_ATTR_TYPE_U8) {
-                light_level = message->attribute.data.value ? *(uint8_t *)message->attribute.data.value : light_level;
-                light_driver_set_level((uint8_t)light_level);
-                ESP_LOGI(TAG, "Light level changes to %d", light_level);
-            } else {
-                ESP_LOGW(TAG, "Level Control cluster data: attribute(0x%x), type(0x%x)", message->attribute.id, message->attribute.data.type);
+        case ESP_ZB_ZCL_ATTR_ON_OFF_OFF_WAIT_TIME: // uint16
+            IF_ATTR_IS_TYPE("onoff", "off_wait_time", ESP_ZB_ZCL_ATTR_TYPE_U16) {
+                off_wait_time = DATA_OR(uint16_t, off_wait_time);
+                // FIXME: implement
+                ESP_LOGI(TAG, "Off wait time: %u", off_wait_time);
+            }
+            break;
+        case ESP_ZB_ZCL_ATTR_ON_OFF_START_UP_ON_OFF: // enum8
+            IF_ATTR_IS_TYPE("onoff", "startup_onoff", ESP_ZB_ZCL_ATTR_TYPE_8BIT_ENUM) {
+                startup_onoff = DATA_OR(uint8_t, startup_onoff);
+                // FIXME: implement
+                ESP_LOGI(TAG, "Startup onoff: %u", startup_onoff);
             }
             break;
         default:
-            ESP_LOGI(TAG, "Message data: cluster(0x%x), attribute(0x%x)  ", message->info.cluster, message->attribute.id);
-        }
+            WARN_UNKNOWN("on/off");
     }
-    return ret;
+    return ESP_OK;
+}
+
+static esp_err_t level_attribute_handler(const esp_zb_zcl_set_attr_value_message_t *message) {
+    uint8_t level = 0;
+    uint8_t startup_level = 0;
+    uint8_t options = 0;
+
+    switch (message->attribute.id) {
+        case ESP_ZB_ZCL_ATTR_LEVEL_CONTROL_CURRENT_LEVEL_ID:
+            IF_ATTR_IS_TYPE("level", "current_level", ESP_ZB_ZCL_ATTR_TYPE_U8) {
+                level = DATA_OR(uint8_t, level);
+                // FIXME: implement
+                // XXX: light_driver_set_level((uint8_t)level);
+                ESP_LOGI(TAG, "Light level changes to %u", level);
+            }
+            break;
+        case ESP_ZB_ZCL_ATTR_LEVEL_CONTROL_START_UP_CURRENT_LEVEL_ID: // uint8
+            IF_ATTR_IS_TYPE("level", "startup_level", ESP_ZB_ZCL_ATTR_TYPE_U8) {
+                startup_level = DATA_OR(uint8_t, startup_level);
+                // FIXME: implement
+                ESP_LOGI(TAG, "Startup level: %u", startup_level);
+            }
+            break;
+        case ESP_ZB_ZCL_ATTR_LEVEL_CONTROL_OPTIONS_ID: // map8
+            IF_ATTR_IS_TYPE("level", "options", ESP_ZB_ZCL_ATTR_TYPE_8BITMAP) {
+                options = DATA_OR(uint8_t, options);
+                // FIXME: implement
+                ESP_LOGI(TAG, "Level options: %x", options);
+            }
+            break;
+        default:
+            WARN_UNKNOWN("level");
+    }
+    return ESP_OK;
+}
+
+static esp_err_t color_attribute_handler(const esp_zb_zcl_set_attr_value_message_t *message) {
+    uint16_t temperature = 0;
+    uint16_t startup_temperature = 0;
+    uint8_t options = 0;
+
+    switch (message->attribute.id) {
+        case ESP_ZB_ZCL_ATTR_COLOR_CONTROL_COLOR_TEMPERATURE_ID:
+            IF_ATTR_IS_TYPE("color", "temperature", ESP_ZB_ZCL_ATTR_TYPE_U16) {
+                temperature = DATA_OR(uint16_t, temperature);
+                // FIXME: implement
+                // XXX: light_driver_set_color_xy(light_color_x, light_color_y);
+                ESP_LOGI(TAG, "Light temperature change to 0x%x", temperature);
+            } 
+            break;
+        case ESP_ZB_ZCL_ATTR_COLOR_CONTROL_OPTIONS_ID: // map8
+            IF_ATTR_IS_TYPE("color", "options", ESP_ZB_ZCL_ATTR_TYPE_8BITMAP) {
+                options = DATA_OR(uint8_t, options);
+                // FIXME: implement
+                ESP_LOGI(TAG, "Color options: %x", options);
+            }
+            break;
+        case ESP_ZB_ZCL_ATTR_COLOR_CONTROL_START_UP_COLOR_TEMPERATURE_MIREDS_ID: // uint16
+            IF_ATTR_IS_TYPE("level", "startup_temperature", ESP_ZB_ZCL_ATTR_TYPE_U16) {
+                startup_temperature = DATA_OR(uint16_t, startup_temperature);
+                // FIXME: implement
+                ESP_LOGI(TAG, "Startup temperature: %u", startup_temperature);
+            }
+            break;
+            break;
+        default:
+            WARN_UNKNOWN("color");
+    }
+    return ESP_OK;
+}
+
+static esp_err_t zb_attribute_handler(const esp_zb_zcl_set_attr_value_message_t *message)
+{
+    ESP_RETURN_ON_FALSE(message, ESP_FAIL, TAG, "Empty message");
+    ESP_RETURN_ON_FALSE(message->info.status == ESP_ZB_ZCL_STATUS_SUCCESS, ESP_ERR_INVALID_ARG, TAG, "Received message: error status(%d)", message->info.status);
+    // ESP_LOGI(TAG, "Received message: endpoint(%d), cluster(0x%x), attribute(0x%x), data size(%d)", message->info.dst_endpoint, message->info.cluster, message->attribute.id, message->attribute.data.size);
+
+    if (message->info.dst_endpoint != MY_LIGHT_ENDPOINT) {
+        ESP_LOGW(TAG, "Received message for unconfigured endpoint(%d): cluster(0x%x), attribute(0x%x), data size(%d)", message->info.dst_endpoint, message->info.cluster, message->attribute.id, message->attribute.data.size);
+        return ESP_ERR_INVALID_ARG;
+    }
+
+    // basic, identify, groups, scenes, onoff, level, color
+    switch (message->info.cluster) {
+        case ESP_ZB_ZCL_CLUSTER_ID_ON_OFF:
+            return onoff_attribute_handler(message);
+        case ESP_ZB_ZCL_CLUSTER_ID_LEVEL_CONTROL:
+            return level_attribute_handler(message);
+        case ESP_ZB_ZCL_CLUSTER_ID_COLOR_CONTROL:
+            return color_attribute_handler(message);
+        default:
+            ESP_LOGW(TAG, "Unknown attribute: cluster(0x%x), attribute(0x%x)", message->info.cluster, message->attribute.id);
+    }
+    return ESP_OK;
 }
 
 static esp_err_t zb_action_handler(esp_zb_core_action_callback_id_t callback_id, const void *message)
 {
     esp_err_t ret = ESP_OK;
     switch (callback_id) {
-    case ESP_ZB_CORE_SET_ATTR_VALUE_CB_ID:
-        ret = zb_attribute_handler((esp_zb_zcl_set_attr_value_message_t *)message);
-        break;
-    default:
-        ESP_LOGW(TAG, "Receive Zigbee action(0x%x) callback", callback_id);
-        break;
+        case ESP_ZB_CORE_SET_ATTR_VALUE_CB_ID:
+            ret = zb_attribute_handler((esp_zb_zcl_set_attr_value_message_t *)message);
+            break;
+        case ESP_ZB_CORE_SCENES_STORE_SCENE_CB_ID:
+            ESP_LOGW(TAG, "Got store scene callback");
+            // FIXME: implement
+            break;
+        case ESP_ZB_CORE_SCENES_RECALL_SCENE_CB_ID:
+            ESP_LOGW(TAG, "Got recall scene callback");
+            // FIXME: implement
+            break;
+        default:
+            ESP_LOGW(TAG, "Receive Zigbee action(0x%x) callback", callback_id);
+            break;
     }
     return ret;
 }
