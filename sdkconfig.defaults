@@ -29,3 +29,7 @@ CONFIG_ZB_ENABLED=y
 CONFIG_ZB_ZCZR=y
 # end of Zboss
 # end of Component config
+
+# Let's have some colors, shall we?
+CONFIG_BOOTLOADER_LOG_COLORS=y
+CONFIG_LOG_COLORS=y
