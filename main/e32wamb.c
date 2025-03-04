@@ -98,6 +98,7 @@ void esp_zb_app_signal_handler(esp_zb_app_signal_t *signal_struct)
             if (leave_params->leave_type == ESP_ZB_NWK_LEAVE_TYPE_RESET) {
                 ESP_LOGI(TAG, "ZDO leave: with reset, status: %s", esp_err_to_name(err_status));
                 esp_zb_nvram_erase_at_start(true); // erase previous network information.
+                my_light_erase_flash(); // erase all config from flash
                 esp_zb_bdb_start_top_level_commissioning(ESP_ZB_BDB_MODE_NETWORK_STEERING); // steering a new network.
             } else {
                 ESP_LOGI(TAG, "ZDO leave: leave_type: %d, status: %s", leave_params->leave_type, esp_err_to_name(err_status));
@@ -143,6 +144,7 @@ static esp_err_t onoff_attribute_handler(const esp_zb_zcl_set_attr_value_message
                 // FIXME: implement
                 // XXX: light_driver_set_power(light_state);
                 ESP_LOGI(TAG, "Light sets to %s", light_state ? "On" : "Off");
+                my_light_save_var_to_flash(MLFV_onoff, light_state); // FIXME: delayed save needed
             }
             break;
         case ESP_ZB_ZCL_ATTR_ON_OFF_ON_TIME: // uint16
@@ -162,8 +164,8 @@ static esp_err_t onoff_attribute_handler(const esp_zb_zcl_set_attr_value_message
         case ESP_ZB_ZCL_ATTR_ON_OFF_START_UP_ON_OFF: // enum8
             IF_ATTR_IS_TYPE("onoff", "startup_onoff", ESP_ZB_ZCL_ATTR_TYPE_8BIT_ENUM) {
                 startup_onoff = DATA_OR(uint8_t, startup_onoff);
-                // FIXME: implement
                 ESP_LOGI(TAG, "Startup onoff: %u", startup_onoff);
+                my_light_save_var_to_flash(MLFV_startup_onoff, startup_onoff);
             }
             break;
         default:
@@ -184,20 +186,21 @@ static esp_err_t level_attribute_handler(const esp_zb_zcl_set_attr_value_message
                 // FIXME: implement
                 // XXX: light_driver_set_level((uint8_t)level);
                 ESP_LOGI(TAG, "Light level changes to %u", level);
+                my_light_save_var_to_flash(MLFV_level, level); // FIXME: delayed save needed
             }
             break;
         case ESP_ZB_ZCL_ATTR_LEVEL_CONTROL_START_UP_CURRENT_LEVEL_ID: // uint8
             IF_ATTR_IS_TYPE("level", "startup_level", ESP_ZB_ZCL_ATTR_TYPE_U8) {
                 startup_level = DATA_OR(uint8_t, startup_level);
-                // FIXME: implement
                 ESP_LOGI(TAG, "Startup level: %u", startup_level);
+                my_light_save_var_to_flash(MLFV_startup_level, startup_level);
             }
             break;
         case ESP_ZB_ZCL_ATTR_LEVEL_CONTROL_OPTIONS_ID: // map8
             IF_ATTR_IS_TYPE("level", "options", ESP_ZB_ZCL_ATTR_TYPE_8BITMAP) {
                 options = DATA_OR(uint8_t, options);
-                // FIXME: implement
                 ESP_LOGI(TAG, "Level options: %x", options);
+                my_light_save_var_to_flash(MLFV_level_options, options);
             }
             break;
         default:
@@ -218,20 +221,21 @@ static esp_err_t color_attribute_handler(const esp_zb_zcl_set_attr_value_message
                 // FIXME: implement
                 // XXX: light_driver_set_color_xy(light_color_x, light_color_y);
                 ESP_LOGI(TAG, "Light temperature change to 0x%x", temperature);
+                my_light_save_var_to_flash(MLFV_temp, temperature); // FIXME: delayed save needed
             } 
             break;
         case ESP_ZB_ZCL_ATTR_COLOR_CONTROL_OPTIONS_ID: // map8
             IF_ATTR_IS_TYPE("color", "options", ESP_ZB_ZCL_ATTR_TYPE_8BITMAP) {
                 options = DATA_OR(uint8_t, options);
-                // FIXME: implement
                 ESP_LOGI(TAG, "Color options: %x", options);
+                my_light_save_var_to_flash(MLFV_color_options, options);
             }
             break;
         case ESP_ZB_ZCL_ATTR_COLOR_CONTROL_START_UP_COLOR_TEMPERATURE_MIREDS_ID: // uint16
             IF_ATTR_IS_TYPE("level", "startup_temperature", ESP_ZB_ZCL_ATTR_TYPE_U16) {
                 startup_temperature = DATA_OR(uint16_t, startup_temperature);
-                // FIXME: implement
                 ESP_LOGI(TAG, "Startup temperature: %u", startup_temperature);
+                my_light_save_var_to_flash(MLFV_startup_temp, startup_temperature);
             }
             break;
             break;
@@ -281,6 +285,7 @@ static esp_err_t zb_action_handler(esp_zb_core_action_callback_id_t callback_id,
             ESP_LOGW(TAG, "Got recall scene callback");
             // FIXME: implement
             break;
+        // FIXME: also triggering: ESP_ZB_CORE_IDENTIFY_EFFECT_CB_ID
         default:
             ESP_LOGW(TAG, "Receive Zigbee action(0x%x) callback", callback_id);
             break;

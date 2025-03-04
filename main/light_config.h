@@ -63,6 +63,9 @@ typedef enum ml_flash_var_s {
 // Save given variable (key) to nvs
 esp_err_t my_light_save_var_to_flash(ml_flash_var_t key, uint32_t val);
 
+// Erase all keys from nvs
+esp_err_t my_light_erase_flash();
+
 // Restore read-write variables of my_light_cfg_t from nvs
 esp_err_t my_light_restore_cfg_from_flash(my_light_cfg_t *light_cfg);
 

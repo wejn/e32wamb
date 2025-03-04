@@ -12,6 +12,9 @@
 #include "ha/esp_zigbee_ha_standard.h"
 #include "esp_err.h"
 #include "esp_app_desc.h"
+#include "nvs.h"
+
+#define LIGHT_CONFIG_NVS_NAMESPACE "light_config"
 
 static const char *TAG = "LIGHT_CONFIG";
 
@@ -24,21 +27,159 @@ static const char *ml_flash_var_to_key(ml_flash_var_t var) {
 }
 #undef MLFV_AS_STRING
 
-esp_err_t my_light_save_var_to_flash(ml_flash_var_t key, uint32_t val) {
-    ESP_LOGI(TAG, "save %s to flash: %lu", ml_flash_var_to_key(key), val);
-    // FIXME: implement
-    return ESP_OK;
+esp_err_t my_light_erase_flash() {
+    esp_err_t err;
+    nvs_handle_t nvs_handle;
+
+    err = nvs_open(LIGHT_CONFIG_NVS_NAMESPACE, NVS_READWRITE, &nvs_handle);
+    if (err != ESP_OK) {
+        ESP_LOGW(TAG, "can't access flash to erase it: %s", esp_err_to_name(err));
+        return err;
+    }
+
+    err = nvs_erase_all(nvs_handle);
+    if (err != ESP_OK) {
+        ESP_LOGW(TAG, "can't erase flash: %s", esp_err_to_name(err));
+        nvs_close(nvs_handle);
+        return err;
+    }
+
+    err = nvs_commit(nvs_handle);
+    if (err == ESP_OK) {
+        ESP_LOGI(TAG, "all flash erased");
+    } else {
+        ESP_LOGW(TAG, "can't erase flash (commit): %s", esp_err_to_name(err));
+    }
+
+    nvs_close(nvs_handle);
+
+    return err;
+
 }
 
-static esp_err_t my_light_read_var_from_flash(ml_flash_var_t key, uint32_t *val) {
-    ESP_LOGI(TAG, "read %s from flash", ml_flash_var_to_key(key));
-    // FIXME: implement
-    return ESP_OK;
+esp_err_t my_light_save_var_to_flash(ml_flash_var_t key, uint32_t val) {
+    const char *k = ml_flash_var_to_key(key);
+    esp_err_t err;
+    nvs_handle_t nvs_handle;
+
+    err = nvs_open(LIGHT_CONFIG_NVS_NAMESPACE, NVS_READWRITE, &nvs_handle);
+    if (err != ESP_OK) {
+        ESP_LOGW(TAG, "can't access flash to write settings: %s", esp_err_to_name(err));
+        return err;
+    }
+
+    err = nvs_set_u32(nvs_handle, k, val);
+    switch (err) {
+        case ESP_OK:
+            err = nvs_commit(nvs_handle);
+            if (err == ESP_OK) {
+                ESP_LOGI(TAG, "saved %s to flash: %lu", k, val);
+            } else {
+                ESP_LOGW(TAG, "save of %s to flash err during commit: %s", k, esp_err_to_name(err));
+            }
+            break;
+        default:
+            ESP_LOGW(TAG, "save of %s to flash err: %s", k, esp_err_to_name(err));
+            break;
+    }
+
+    nvs_close(nvs_handle);
+
+    return err;
+}
+
+static esp_err_t my_light_read_var_from_flash(nvs_handle_t nvs_handle, ml_flash_var_t key, uint32_t *val) {
+    const char *k = ml_flash_var_to_key(key);
+    esp_err_t err = nvs_get_u32(nvs_handle, k, val);
+    switch (err) {
+        case ESP_OK:
+            ESP_LOGI(TAG, "read %s from flash = %lu", k, *val);
+            break;
+        case ESP_ERR_NVS_NOT_FOUND:
+            ESP_LOGI(TAG, "read %s from flash = not found", k);
+            break;
+        default:
+            ESP_LOGW(TAG, "read %s from flash err: %s", k, esp_err_to_name(err));
+            break;
+    }
+    return err;
 }
 
 esp_err_t my_light_restore_cfg_from_flash(my_light_cfg_t *light_cfg) {
-    my_light_read_var_from_flash(MLFV_onoff, NULL);
-    // FIXME: implement
+    uint32_t val;
+    esp_err_t err;
+    nvs_handle_t nvs_handle;
+
+    err = nvs_open(LIGHT_CONFIG_NVS_NAMESPACE, NVS_READONLY, &nvs_handle);
+    if (err != ESP_OK) {
+        ESP_LOGW(TAG, "can't access flash to restore settings: %s", esp_err_to_name(err));
+        return err;
+    }
+
+    // onoff
+    val = light_cfg->startup_onoff;
+    my_light_read_var_from_flash(nvs_handle, MLFV_startup_onoff, &val);
+    switch (val) {
+        case 0: // off
+            light_cfg->onoff = 0;
+            break;
+        case 1: // on
+            light_cfg->onoff = 1;
+            break;
+        case 2: // toggle
+            if (ESP_OK == my_light_read_var_from_flash(nvs_handle, MLFV_onoff, &val)) {
+                light_cfg->onoff = !((bool) val);
+            }
+            break;
+        case 0xff: // previous
+            if (ESP_OK == my_light_read_var_from_flash(nvs_handle, MLFV_onoff, &val)) {
+                light_cfg->onoff = ((bool) val);
+            }
+            break;
+        default: // 0x3..0xfe, no action
+            break;
+    }
+
+    // level
+    if (ESP_OK == my_light_read_var_from_flash(nvs_handle, MLFV_level_options, &val)) {
+        light_cfg->level_options = val;
+    }
+
+    val = light_cfg->startup_level;
+    my_light_read_var_from_flash(nvs_handle, MLFV_startup_level, &val);
+    switch (val) {
+        case 0: // minimum
+            light_cfg->level = 1;
+            break;
+        case 0xff: // previous
+            my_light_read_var_from_flash(nvs_handle, MLFV_level, &val);
+            light_cfg->level = val;
+            break;
+        default:
+            if (1 <= val && val <= 254) { // this level
+                light_cfg->level = val;
+            }
+    }
+
+    // color
+    if (ESP_OK == my_light_read_var_from_flash(nvs_handle, MLFV_color_options, &val)) {
+        light_cfg->color_options = val;
+    }
+
+    val = light_cfg->startup_temp;
+    my_light_read_var_from_flash(nvs_handle, MLFV_startup_temp, &val);
+    if (val == 0xffff) { // previous
+        if (ESP_OK == my_light_read_var_from_flash(nvs_handle, MLFV_temp, &val)) {
+            light_cfg->temp = val;
+        }
+    } else {
+        if (val <= 0xffef) { // this color
+            light_cfg->temp = val;
+        }
+    }
+
+    nvs_close(nvs_handle);
+
     return ESP_OK;
 }
 
