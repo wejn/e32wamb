@@ -5,7 +5,7 @@
  * This code is licensed under AGPL version 3.
  * Originally forked from https://github.com/wejn/esp32-huello-world.
  */
-#include "e32wamb.h"
+#include "main.h"
 #include "esp_check.h"
 #include "esp_log.h"
 #include "nvs_flash.h"

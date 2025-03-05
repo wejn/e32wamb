@@ -7,7 +7,7 @@
 #include "esp_check.h"
 #include "stdio.h"
 #include "string.h"
-#include "e32wamb.h"
+#include "main.h"
 #include "light_config.h"
 #include "ha/esp_zigbee_ha_standard.h"
 #include "esp_err.h"
