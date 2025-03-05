@@ -13,6 +13,7 @@
 #include "freertos/task.h"
 #include "ha/esp_zigbee_ha_standard.h"
 #include "light_config.h"
+#include "delayed_save.h"
 
 #if !defined CONFIG_ZB_ZCZR
 #error Define ZB_ZCZR in idf.py menuconfig to compile light (Router) source code.
@@ -144,7 +145,7 @@ static esp_err_t onoff_attribute_handler(const esp_zb_zcl_set_attr_value_message
                 // FIXME: implement
                 // XXX: light_driver_set_power(light_state);
                 ESP_LOGI(TAG, "Light sets to %s", light_state ? "On" : "Off");
-                my_light_save_var_to_flash(MLFV_onoff, light_state); // FIXME: delayed save needed
+                trigger_delayed_save(DS_onoff, light_state);
             }
             break;
         case ESP_ZB_ZCL_ATTR_ON_OFF_ON_TIME: // uint16
@@ -186,7 +187,7 @@ static esp_err_t level_attribute_handler(const esp_zb_zcl_set_attr_value_message
                 // FIXME: implement
                 // XXX: light_driver_set_level((uint8_t)level);
                 ESP_LOGI(TAG, "Light level changes to %u", level);
-                my_light_save_var_to_flash(MLFV_level, level); // FIXME: delayed save needed
+                trigger_delayed_save(DS_level, level);
             }
             break;
         case ESP_ZB_ZCL_ATTR_LEVEL_CONTROL_START_UP_CURRENT_LEVEL_ID: // uint8
@@ -220,8 +221,8 @@ static esp_err_t color_attribute_handler(const esp_zb_zcl_set_attr_value_message
                 temperature = DATA_OR(uint16_t, temperature);
                 // FIXME: implement
                 // XXX: light_driver_set_color_xy(light_color_x, light_color_y);
-                ESP_LOGI(TAG, "Light temperature change to 0x%x", temperature);
-                my_light_save_var_to_flash(MLFV_temp, temperature); // FIXME: delayed save needed
+                ESP_LOGI(TAG, "Light temperature change to %u", temperature);
+                trigger_delayed_save(DS_temperature, temperature);
             } 
             break;
         case ESP_ZB_ZCL_ATTR_COLOR_CONTROL_OPTIONS_ID: // map8
@@ -328,5 +329,6 @@ void app_main(void)
     };
     ESP_ERROR_CHECK(nvs_flash_init());
     ESP_ERROR_CHECK(esp_zb_platform_config(&config));
+    create_delayed_save_task();
     xTaskCreate(esp_zb_task, "Zigbee_main", 4096, NULL, 5, NULL);
 }
