@@ -7,6 +7,7 @@
 #include "esp_check.h"
 #include "string.h"
 #include "light_state.h"
+#include "delayed_save.h"
 #include "scenes.h"
 #include "esp_err.h"
 
@@ -64,39 +65,40 @@ esp_err_t recall_scene(esp_zb_zcl_recall_scene_message_t *msg) {
     while (f) {
         switch (f->cluster_id) {
             case ESP_ZB_ZCL_CLUSTER_ID_ON_OFF:
-                esp_zb_zcl_on_off_cmd_t cmd_onoff = {
-                    .address_mode = ESP_ZB_APS_ADDR_MODE_16_ENDP_PRESENT,
-                    .zcl_basic_cmd.dst_addr_u.addr_short = esp_zb_get_short_address(),
-                    .zcl_basic_cmd.src_endpoint = msg->info.dst_endpoint,
-                    .zcl_basic_cmd.dst_endpoint = msg->info.dst_endpoint,
-                    .on_off_cmd_id = (bool) (*(uint8_t*) f->extension_field_attribute_value_list),
-                };
-                ESP_LOGI(TAG, "Recall scene %d for group %d: onoff=%d", msg->scene_id, msg->group_id, cmd_onoff.on_off_cmd_id);
-                esp_zb_zcl_on_off_cmd_req(&cmd_onoff);
+                // FIXME: sync with attribute handler
+                g_onoff = (bool) *(uint8_t*) f->extension_field_attribute_value_list;
+                esp_zb_zcl_set_attribute_val(
+                        msg->info.dst_endpoint,
+                        ESP_ZB_ZCL_CLUSTER_ID_ON_OFF,
+                        ESP_ZB_ZCL_CLUSTER_SERVER_ROLE,
+                        ESP_ZB_ZCL_ATTR_ON_OFF_ON_OFF_ID,
+                        f->extension_field_attribute_value_list,
+                        false);
+                trigger_delayed_save(DS_onoff);
                 break;
             case ESP_ZB_ZCL_CLUSTER_ID_LEVEL_CONTROL:
-                esp_zb_zcl_move_to_level_cmd_t cmd_level = {
-                    .address_mode = ESP_ZB_APS_ADDR_MODE_16_ENDP_PRESENT,
-                    .zcl_basic_cmd.dst_addr_u.addr_short = esp_zb_get_short_address(),
-                    .zcl_basic_cmd.src_endpoint = msg->info.dst_endpoint,
-                    .zcl_basic_cmd.dst_endpoint = msg->info.dst_endpoint,
-                    .level = *(uint8_t*) f->extension_field_attribute_value_list,
-                    .transition_time = msg->transition_time,
-                };
-                ESP_LOGI(TAG, "Recall scene %d for group %d: level=%d", msg->scene_id, msg->group_id, cmd_level.level);
-                esp_zb_zcl_level_move_to_level_cmd_req(&cmd_level);
+                // FIXME: sync with attribute handler
+                g_level = *(uint8_t*) f->extension_field_attribute_value_list;
+                esp_zb_zcl_set_attribute_val(
+                        msg->info.dst_endpoint,
+                        ESP_ZB_ZCL_CLUSTER_ID_LEVEL_CONTROL,
+                        ESP_ZB_ZCL_CLUSTER_SERVER_ROLE,
+                        ESP_ZB_ZCL_ATTR_LEVEL_CONTROL_CURRENT_LEVEL_ID,
+                        f->extension_field_attribute_value_list,
+                        false);
+                trigger_delayed_save(DS_level);
                 break;
             case ESP_ZB_ZCL_CLUSTER_ID_COLOR_CONTROL:
-                esp_zb_zcl_color_move_to_color_temperature_cmd_t cmd_temp = {
-                    .address_mode = ESP_ZB_APS_ADDR_MODE_16_ENDP_PRESENT,
-                    .zcl_basic_cmd.dst_addr_u.addr_short = esp_zb_get_short_address(),
-                    .zcl_basic_cmd.src_endpoint = msg->info.dst_endpoint,
-                    .zcl_basic_cmd.dst_endpoint = msg->info.dst_endpoint,
-                    .color_temperature = *(uint16_t*) f->extension_field_attribute_value_list,
-                    .transition_time = msg->transition_time,
-                };
-                ESP_LOGI(TAG, "Recall scene %d for group %d: temp=%d", msg->scene_id, msg->group_id, cmd_temp.color_temperature);
-                esp_zb_zcl_color_move_to_color_temperature_cmd_req(&cmd_temp);
+                // FIXME: sync with attribute handler
+                g_temperature = *(uint16_t*) f->extension_field_attribute_value_list;
+                esp_zb_zcl_set_attribute_val(
+                        msg->info.dst_endpoint,
+                        ESP_ZB_ZCL_CLUSTER_ID_COLOR_CONTROL,
+                        ESP_ZB_ZCL_CLUSTER_SERVER_ROLE,
+                        ESP_ZB_ZCL_ATTR_COLOR_CONTROL_COLOR_TEMPERATURE_ID,
+                        f->extension_field_attribute_value_list,
+                        false);
+                trigger_delayed_save(DS_temperature);
                 break;
             default:
                 ESP_LOGW(TAG, "Unknown field(s) to recall for endpoint %d, cluster %d", msg->info.dst_endpoint, f->cluster_id);
@@ -104,8 +106,6 @@ esp_err_t recall_scene(esp_zb_zcl_recall_scene_message_t *msg) {
         }
         f = f->next;
     }
-    // FIXME: For some reason, this approach with commands gets the device stuck
-    // in an infinite loop, trying to set color. That is, until the next cmd comes.
 
     return err;
 }
