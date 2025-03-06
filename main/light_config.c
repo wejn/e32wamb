@@ -58,7 +58,14 @@ esp_err_t my_light_erase_flash() {
 }
 
 esp_err_t my_light_save_var_to_flash(ml_flash_var_t key, uint32_t val) {
-    const char *k = ml_flash_var_to_key(key);
+    ml_flash_vars_t vars = {
+        .key = key,
+        .value = val,
+    };
+    return my_light_save_vars_to_flash(&vars, 1);
+}
+
+esp_err_t my_light_save_vars_to_flash(ml_flash_vars_t *vars, size_t num) {
     esp_err_t err;
     nvs_handle_t nvs_handle;
 
@@ -68,19 +75,24 @@ esp_err_t my_light_save_var_to_flash(ml_flash_var_t key, uint32_t val) {
         return err;
     }
 
-    err = nvs_set_u32(nvs_handle, k, val);
-    switch (err) {
-        case ESP_OK:
-            err = nvs_commit(nvs_handle);
-            if (err == ESP_OK) {
-                ESP_LOGI(TAG, "saved %s to flash: %lu", k, val);
-            } else {
-                ESP_LOGW(TAG, "save of %s to flash err during commit: %s", k, esp_err_to_name(err));
-            }
-            break;
-        default:
+    for (size_t i = 0; i < num; i++) {
+        const char *k = ml_flash_var_to_key(vars[i].key);
+        err = nvs_set_u32(nvs_handle, k, vars[i].value);
+        if (err == ESP_OK) {
+            ESP_LOGI(TAG, "saved %s to flash: %lu", k, vars[i].value);
+        } else {
             ESP_LOGW(TAG, "save of %s to flash err: %s", k, esp_err_to_name(err));
             break;
+        }
+    }
+
+    if (err == ESP_OK) {
+        err = nvs_commit(nvs_handle);
+        if (err == ESP_OK) {
+            ESP_LOGI(TAG, "committed %d vars to flash", num);
+        } else {
+            ESP_LOGW(TAG, "commit of %d vars to flash err: %s", num, esp_err_to_name(err));
+        }
     }
 
     nvs_close(nvs_handle);

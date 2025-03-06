@@ -34,6 +34,8 @@ static void delayed_save_task(void *pvParameters) {
     bool save_temperature = false;
     bool due_to_last_triggered = false;
     bool due_to_last_saved = false;
+    ml_flash_vars_t vars[3];
+    size_t num_to_save = 0;
     while (true) {
         taskENTER_CRITICAL(&my_spinlock);
         save_onoff = save_level = save_temperature = false;
@@ -56,16 +58,23 @@ static void delayed_save_task(void *pvParameters) {
         if (due_to_last_saved || due_to_last_triggered) {
             ESP_LOGI(TAG, "Saving: dtls: %d, dtlt: %d", due_to_last_saved, due_to_last_triggered);
 
-            // FIXME: Lump all saving together, if possible?
+            num_to_save = 0;
             if (save_onoff) {
-                my_light_save_var_to_flash(MLFV_onoff, onoff_to_save);
+                vars[num_to_save].key = MLFV_onoff;
+                vars[num_to_save].value = onoff_to_save;
+                num_to_save++;
             }
             if (save_level) {
-                my_light_save_var_to_flash(MLFV_level, level_to_save);
+                vars[num_to_save].key = MLFV_level;
+                vars[num_to_save].value = level_to_save;
+                num_to_save++;
             }
             if (save_temperature) {
-                my_light_save_var_to_flash(MLFV_temp, temperature_to_save);
+                vars[num_to_save].key = MLFV_temp;
+                vars[num_to_save].value = temperature_to_save;
+                num_to_save++;
             }
+            my_light_save_vars_to_flash(vars, num_to_save);
 
             // Now that we saved, go to sleep until triggered again
             xTaskNotifyWait(0, 0, NULL, portMAX_DELAY);

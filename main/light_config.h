@@ -60,6 +60,14 @@ typedef enum ml_flash_var_s {
 } ml_flash_var_t;
 #undef MLFV_AS_ENUM
 
+typedef struct ml_flash_vars_s {
+    ml_flash_var_t key;
+    uint32_t value;
+} ml_flash_vars_t;
+
+// Save num variables to nvs at the same time
+esp_err_t my_light_save_vars_to_flash(ml_flash_vars_t *vars, size_t num);
+
 // Save given variable (key) to nvs
 esp_err_t my_light_save_var_to_flash(ml_flash_var_t key, uint32_t val);
 
