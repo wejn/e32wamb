@@ -13,6 +13,7 @@
 #include "freertos/task.h"
 #include "ha/esp_zigbee_ha_standard.h"
 #include "light_config.h"
+#include "light_state.h"
 #include "delayed_save.h"
 
 #if !defined CONFIG_ZB_ZCZR
@@ -133,7 +134,6 @@ void esp_zb_app_signal_handler(esp_zb_app_signal_t *signal_struct)
     } else
 
 static esp_err_t onoff_attribute_handler(const esp_zb_zcl_set_attr_value_message_t *message) {
-    bool light_state = 0;
     uint16_t on_time = 0;
     uint16_t off_wait_time = 0;
     uint8_t startup_onoff = 0;
@@ -141,11 +141,11 @@ static esp_err_t onoff_attribute_handler(const esp_zb_zcl_set_attr_value_message
     switch (message->attribute.id) {
         case ESP_ZB_ZCL_ATTR_ON_OFF_ON_OFF_ID:
             IF_ATTR_IS_TYPE("onoff", "onoff", ESP_ZB_ZCL_ATTR_TYPE_BOOL) {
-                light_state = DATA_OR(bool, light_state);
+                g_onoff = DATA_OR(bool, g_onoff);
                 // FIXME: implement
                 // XXX: light_driver_set_power(light_state);
-                ESP_LOGI(TAG, "Light sets to %s", light_state ? "On" : "Off");
-                trigger_delayed_save(DS_onoff, light_state);
+                ESP_LOGI(TAG, "Light sets to %s", g_onoff ? "On" : "Off");
+                trigger_delayed_save(DS_onoff);
             }
             break;
         case ESP_ZB_ZCL_ATTR_ON_OFF_ON_TIME: // uint16
@@ -176,18 +176,17 @@ static esp_err_t onoff_attribute_handler(const esp_zb_zcl_set_attr_value_message
 }
 
 static esp_err_t level_attribute_handler(const esp_zb_zcl_set_attr_value_message_t *message) {
-    uint8_t level = 0;
     uint8_t startup_level = 0;
     uint8_t options = 0;
 
     switch (message->attribute.id) {
         case ESP_ZB_ZCL_ATTR_LEVEL_CONTROL_CURRENT_LEVEL_ID:
             IF_ATTR_IS_TYPE("level", "current_level", ESP_ZB_ZCL_ATTR_TYPE_U8) {
-                level = DATA_OR(uint8_t, level);
+                g_level = DATA_OR(uint8_t, g_level);
                 // FIXME: implement
-                // XXX: light_driver_set_level((uint8_t)level);
-                ESP_LOGI(TAG, "Light level changes to %u", level);
-                trigger_delayed_save(DS_level, level);
+                // XXX: light_driver_set_level((uint8_t)g_level);
+                ESP_LOGI(TAG, "Light level changes to %u", g_level);
+                trigger_delayed_save(DS_level);
             }
             break;
         case ESP_ZB_ZCL_ATTR_LEVEL_CONTROL_START_UP_CURRENT_LEVEL_ID: // uint8
@@ -211,18 +210,17 @@ static esp_err_t level_attribute_handler(const esp_zb_zcl_set_attr_value_message
 }
 
 static esp_err_t color_attribute_handler(const esp_zb_zcl_set_attr_value_message_t *message) {
-    uint16_t temperature = 0;
     uint16_t startup_temperature = 0;
     uint8_t options = 0;
 
     switch (message->attribute.id) {
         case ESP_ZB_ZCL_ATTR_COLOR_CONTROL_COLOR_TEMPERATURE_ID:
             IF_ATTR_IS_TYPE("color", "temperature", ESP_ZB_ZCL_ATTR_TYPE_U16) {
-                temperature = DATA_OR(uint16_t, temperature);
+                g_temperature = DATA_OR(uint16_t, g_temperature);
                 // FIXME: implement
                 // XXX: light_driver_set_color_xy(light_color_x, light_color_y);
-                ESP_LOGI(TAG, "Light temperature change to %u", temperature);
-                trigger_delayed_save(DS_temperature, temperature);
+                ESP_LOGI(TAG, "Light temperature change to %u", g_temperature);
+                trigger_delayed_save(DS_temperature);
             } 
             break;
         case ESP_ZB_ZCL_ATTR_COLOR_CONTROL_OPTIONS_ID: // map8
@@ -296,7 +294,16 @@ static esp_err_t zb_action_handler(esp_zb_core_action_callback_id_t callback_id,
 
 static void esp_zb_task(void *pvParameters)
 {
-    /* initialize Zigbee stack */
+    // Spin up light config (from hardcode + flash)
+    my_light_cfg_t mlc = MY_LIGHT_CONFIG();
+    my_light_restore_cfg_from_flash(&mlc);
+
+    // Initialize globals
+    g_onoff = mlc.onoff;
+    g_level = mlc.level;
+    g_temperature = mlc.temperature;
+
+    // initialize Zigbee stack
     esp_zb_cfg_t zb_nwk_cfg = ESP_ZB_ZR_CONFIG();
     esp_zb_init(&zb_nwk_cfg);
 
@@ -305,12 +312,9 @@ static void esp_zb_task(void *pvParameters)
     uint8_t secret_zll_trust_center_key[] = TRUST_CENTER_KEY;
     esp_zb_secur_TC_standard_distributed_key_set(secret_zll_trust_center_key);
 
+    // Configure + start zigbee
     esp_zb_ep_list_t *light_ep = esp_zb_ep_list_create();
-
-    my_light_cfg_t mlc = MY_LIGHT_CONFIG();
-    my_light_restore_cfg_from_flash(&mlc); // FIXME: error checking?
     esp_zb_cluster_list_t *cluster_list = my_light_clusters_create(&mlc);
-
     esp_zb_endpoint_config_t endpoint_config = MY_EP_CONFIG();
     esp_zb_ep_list_add_ep(light_ep, cluster_list, endpoint_config);
 
@@ -329,6 +333,12 @@ void app_main(void)
     };
     ESP_ERROR_CHECK(nvs_flash_init());
     ESP_ERROR_CHECK(esp_zb_platform_config(&config));
+    // FIXME: maybe light state globals should be initialized by now.
+    // But that would need mlc spin up here (and passed onto esp_zb_task).
+    // But that means it should survive the end of app_main. Do we want
+    // another static? ;)
+    //
+    // Decide when the time for more complex light_state comes.
     create_delayed_save_task();
     xTaskCreate(esp_zb_task, "Zigbee_main", 4096, NULL, 5, NULL);
 }

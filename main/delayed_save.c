@@ -7,6 +7,7 @@
 #include <stdint.h>
 #include "delayed_save.h"
 #include "light_config.h"
+#include "light_state.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "esp_timer.h"
@@ -18,9 +19,6 @@
 static const char *TAG = "DELAYED_SAVE";
 static TaskHandle_t ds_task_handle;
 volatile static bool ds_initialized = false;
-volatile static uint32_t onoff_to_save = 0;
-volatile static uint32_t level_to_save = 0;
-volatile static uint32_t temperature_to_save = 0;
 volatile static bool onoff_dirty = false;
 volatile static bool level_dirty = false;
 volatile static bool temperature_dirty = false;
@@ -61,17 +59,17 @@ static void delayed_save_task(void *pvParameters) {
             num_to_save = 0;
             if (save_onoff) {
                 vars[num_to_save].key = MLFV_onoff;
-                vars[num_to_save].value = onoff_to_save;
+                vars[num_to_save].value = g_onoff;
                 num_to_save++;
             }
             if (save_level) {
                 vars[num_to_save].key = MLFV_level;
-                vars[num_to_save].value = level_to_save;
+                vars[num_to_save].value = g_level;
                 num_to_save++;
             }
             if (save_temperature) {
                 vars[num_to_save].key = MLFV_temperature;
-                vars[num_to_save].value = temperature_to_save;
+                vars[num_to_save].value = g_temperature;
                 num_to_save++;
             }
             my_light_save_vars_to_flash(vars, num_to_save);
@@ -85,7 +83,7 @@ static void delayed_save_task(void *pvParameters) {
     }
 }
 
-void trigger_delayed_save(delayed_save_type type, uint32_t value) {
+void trigger_delayed_save(delayed_save_type type) {
     if (!ds_initialized) {
         ESP_LOGE(TAG, "Delayed save of %d triggered without initialization, skip.", type);
         return;
@@ -94,15 +92,12 @@ void trigger_delayed_save(delayed_save_type type, uint32_t value) {
     taskENTER_CRITICAL(&my_spinlock);
     switch (type) {
         case DS_onoff:
-            onoff_to_save = value;
             onoff_dirty = true;
             break;
         case DS_level:
-            level_to_save = value;
             level_dirty = true;
             break;
         case DS_temperature:
-            temperature_to_save = value;
             temperature_dirty = true;
             break;
         default:

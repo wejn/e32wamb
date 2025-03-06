@@ -18,8 +18,8 @@ typedef enum delayed_save_type {
 	DS_temperature,
 } delayed_save_type;
 
-// Trigger delayed save for a given variable type with given value.
-void trigger_delayed_save(delayed_save_type type, uint32_t value);
+// Trigger delayed save for a given variable type, from globals.
+void trigger_delayed_save(delayed_save_type type);
 
 // Create delayed save task that gets triggered by trigger_delayed_save().
 // Must be created before trigger_delayed_save() is called.
