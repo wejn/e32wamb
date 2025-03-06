@@ -25,15 +25,15 @@ volatile static bool onoff_dirty = false;
 volatile static bool level_dirty = false;
 volatile static bool temperature_dirty = false;
 volatile static int64_t last_triggered = 0;
-volatile static int64_t last_saved = 0;
+volatile static int64_t next_save_at = 0;
 static portMUX_TYPE my_spinlock = portMUX_INITIALIZER_UNLOCKED;
 
 static void delayed_save_task(void *pvParameters) {
     bool save_onoff = false;
     bool save_level = false;
     bool save_temperature = false;
-    bool due_to_last_triggered = false;
-    bool due_to_last_saved = false;
+    bool due_to_last_triggered = false; // saving due to last triggered too much in the past
+    bool due_to_last_saved = false; // saving due to last saved too much in the past
     ml_flash_vars_t vars[3];
     size_t num_to_save = 0;
     while (true) {
@@ -41,9 +41,9 @@ static void delayed_save_task(void *pvParameters) {
         save_onoff = save_level = save_temperature = false;
         if (onoff_dirty || level_dirty || temperature_dirty) {
             due_to_last_triggered = (esp_timer_get_time() - last_triggered) > TRIGGERED_LAST_AT_LEAST;
-            due_to_last_saved = (esp_timer_get_time() - last_saved) > SAVE_EVERY;
+            due_to_last_saved = next_save_at < esp_timer_get_time();
             if (due_to_last_saved || due_to_last_triggered) {
-                last_saved = esp_timer_get_time();
+                next_save_at = esp_timer_get_time() + SAVE_EVERY;
                 // Mark the values for saving & reset.
                 save_onoff = onoff_dirty;
                 save_level = level_dirty;
@@ -110,7 +110,10 @@ void trigger_delayed_save(delayed_save_type type, uint32_t value) {
             return;
     }
 
-    last_triggered = esp_timer_get_time();
+    last_triggered = esp_timer_get_time(); // last_triggered = now. (important for the next_save_at)
+    if (next_save_at < last_triggered - SAVE_EVERY) {
+        next_save_at = last_triggered + SAVE_EVERY;
+    }
     taskEXIT_CRITICAL(&my_spinlock);
     // ESP_LOGI(TAG, "Notifying for save type %d with val %lu", type, value);
     xTaskNotifyGive(ds_task_handle);
@@ -122,7 +125,7 @@ void create_delayed_save_task() {
     } else {
         ds_initialized = true;
         onoff_dirty = level_dirty = temperature_dirty = false;
-        last_saved = last_triggered = 0;
+        next_save_at = last_triggered = 0;
         xTaskCreate(delayed_save_task, "delayed_save", 4096, NULL, 4, &ds_task_handle);
         ESP_LOGI(TAG, "Created delayed save task");
     }
