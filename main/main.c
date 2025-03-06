@@ -15,6 +15,7 @@
 #include "light_config.h"
 #include "light_state.h"
 #include "delayed_save.h"
+#include "scenes.h"
 
 #if !defined CONFIG_ZB_ZCZR
 #error Define ZB_ZCZR in idf.py menuconfig to compile light (Router) source code.
@@ -277,12 +278,10 @@ static esp_err_t zb_action_handler(esp_zb_core_action_callback_id_t callback_id,
             ret = zb_attribute_handler((esp_zb_zcl_set_attr_value_message_t *)message);
             break;
         case ESP_ZB_CORE_SCENES_STORE_SCENE_CB_ID:
-            ESP_LOGW(TAG, "Got store scene callback");
-            // FIXME: implement
+            ret = store_scene((esp_zb_zcl_store_scene_message_t*) message);
             break;
         case ESP_ZB_CORE_SCENES_RECALL_SCENE_CB_ID:
-            ESP_LOGW(TAG, "Got recall scene callback");
-            // FIXME: implement
+            ret = recall_scene((esp_zb_zcl_recall_scene_message_t*) message);
             break;
         // FIXME: also triggering: ESP_ZB_CORE_IDENTIFY_EFFECT_CB_ID
         default:
