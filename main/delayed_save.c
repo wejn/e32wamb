@@ -54,7 +54,7 @@ static void delayed_save_task(void *pvParameters) {
         taskEXIT_CRITICAL(&my_spinlock);
 
         // Actual saving -- not in critical section, cos we don't care if we save more recent
-        // level or temp (than at the decision-to-save ts).
+        // level or temperature (than at the decision-to-save ts).
         if (due_to_last_saved || due_to_last_triggered) {
             ESP_LOGI(TAG, "Saving: dtls: %d, dtlt: %d", due_to_last_saved, due_to_last_triggered);
 
@@ -70,7 +70,7 @@ static void delayed_save_task(void *pvParameters) {
                 num_to_save++;
             }
             if (save_temperature) {
-                vars[num_to_save].key = MLFV_temp;
+                vars[num_to_save].key = MLFV_temperature;
                 vars[num_to_save].value = temperature_to_save;
                 num_to_save++;
             }

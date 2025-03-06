@@ -178,15 +178,15 @@ esp_err_t my_light_restore_cfg_from_flash(my_light_cfg_t *light_cfg) {
         light_cfg->color_options = val;
     }
 
-    val = light_cfg->startup_temp;
-    my_light_read_var_from_flash(nvs_handle, MLFV_startup_temp, &val);
+    val = light_cfg->startup_temperature;
+    my_light_read_var_from_flash(nvs_handle, MLFV_startup_temperature, &val);
     if (val == 0xffff) { // previous
-        if (ESP_OK == my_light_read_var_from_flash(nvs_handle, MLFV_temp, &val)) {
-            light_cfg->temp = val;
+        if (ESP_OK == my_light_read_var_from_flash(nvs_handle, MLFV_temperature, &val)) {
+            light_cfg->temperature = val;
         }
     } else {
         if (val <= 0xffef) { // this color
-            light_cfg->temp = val;
+            light_cfg->temperature = val;
         }
     }
 
@@ -321,11 +321,11 @@ esp_zb_cluster_list_t *my_light_clusters_create(my_light_cfg_t *light_cfg) {
     ADD_OR_WARN(esp_zb_color_control_cluster_add_attr, color_attr, ESP_ZB_ZCL_ATTR_COLOR_CONTROL_COLOR_MODE_ID, &color_mode);
     ADD_OR_WARN(esp_zb_color_control_cluster_add_attr, color_attr, ESP_ZB_ZCL_ATTR_COLOR_CONTROL_ENHANCED_COLOR_MODE_ID, &color_mode);
     ADD_OR_WARN(esp_zb_color_control_cluster_add_attr, color_attr, ESP_ZB_ZCL_ATTR_COLOR_CONTROL_COLOR_CAPABILITIES_ID, &color_capabilities);
-    ADD_OR_WARN(esp_zb_color_control_cluster_add_attr, color_attr, ESP_ZB_ZCL_ATTR_COLOR_CONTROL_COLOR_TEMPERATURE_ID, &light_cfg->temp);
-    ADD_OR_WARN(esp_zb_color_control_cluster_add_attr, color_attr, ESP_ZB_ZCL_ATTR_COLOR_CONTROL_START_UP_COLOR_TEMPERATURE_MIREDS_ID, &light_cfg->startup_temp);
-    ADD_OR_WARN(esp_zb_color_control_cluster_add_attr, color_attr, ESP_ZB_ZCL_ATTR_COLOR_CONTROL_COLOR_TEMP_PHYSICAL_MIN_MIREDS_ID, &light_cfg->min_temp);
-    ADD_OR_WARN(esp_zb_color_control_cluster_add_attr, color_attr, ESP_ZB_ZCL_ATTR_COLOR_CONTROL_COLOR_TEMP_PHYSICAL_MAX_MIREDS_ID, &light_cfg->max_temp);
-    ADD_OR_WARN(esp_zb_color_control_cluster_add_attr, color_attr, ESP_ZB_ZCL_ATTR_COLOR_CONTROL_COUPLE_COLOR_TEMP_TO_LEVEL_MIN_MIREDS_ID, &light_cfg->couple_min_temp);
+    ADD_OR_WARN(esp_zb_color_control_cluster_add_attr, color_attr, ESP_ZB_ZCL_ATTR_COLOR_CONTROL_COLOR_TEMPERATURE_ID, &light_cfg->temperature);
+    ADD_OR_WARN(esp_zb_color_control_cluster_add_attr, color_attr, ESP_ZB_ZCL_ATTR_COLOR_CONTROL_START_UP_COLOR_TEMPERATURE_MIREDS_ID, &light_cfg->startup_temperature);
+    ADD_OR_WARN(esp_zb_color_control_cluster_add_attr, color_attr, ESP_ZB_ZCL_ATTR_COLOR_CONTROL_COLOR_TEMP_PHYSICAL_MIN_MIREDS_ID, &light_cfg->min_temperature);
+    ADD_OR_WARN(esp_zb_color_control_cluster_add_attr, color_attr, ESP_ZB_ZCL_ATTR_COLOR_CONTROL_COLOR_TEMP_PHYSICAL_MAX_MIREDS_ID, &light_cfg->max_temperature);
+    ADD_OR_WARN(esp_zb_color_control_cluster_add_attr, color_attr, ESP_ZB_ZCL_ATTR_COLOR_CONTROL_COUPLE_COLOR_TEMP_TO_LEVEL_MIN_MIREDS_ID, &light_cfg->couple_min_temperature);
     esp_zb_cluster_list_add_color_control_cluster(cluster_list, color_attr, ESP_ZB_ZCL_CLUSTER_SERVER_ROLE);
 
     return cluster_list;

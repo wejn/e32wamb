@@ -29,17 +29,17 @@ typedef struct my_light_cfg_s {
     uint8_t startup_onoff; // [RW] 0 = off, 1 = on, 2 = toggle, 0x3..0xfe = preserved (no action), 0xff = previous value
 
     // Level cluster
-    uint8_t level_options; // [RW] (bitfield) 1 = ExecuteIfOff, 2 = Couple changes to level with Color Temp
+    uint8_t level_options; // [RW] (bitfield) 1 = ExecuteIfOff, 2 = Couple changes to level with Color Temperature
     uint8_t level; // [RPS] CurrentLevel: 1-254, 255 = uknown, 0 = do not use(!)
     uint8_t startup_level; // [RW] StartUpCurrentLevel: 0 = minimum, 0xff = previous, rest = this value
 
     // Color cluster
     uint8_t color_options; // [RW] 1 = ExecuteIfOff
-    uint16_t temp; // [RPS] ColorTemperatureMireds: in mireds
-    uint16_t startup_temp; // [RW] StartUpColorTemperatureMireds: 0xffff = previous, 0x0000 - 0xffef = this value
-    uint16_t min_temp; // [R] ColorTempPhysicalMinMireds
-    uint16_t max_temp; // [R] ColorTempPhysicalMaxMireds
-    uint16_t couple_min_temp; // [R] CoupleColorTempToLevelMinMireds: temp for level 0xfe
+    uint16_t temperature; // [RPS] ColorTemperatureMireds: in mireds
+    uint16_t startup_temperature; // [RW] StartUpColorTemperatureMireds: 0xffff = previous, 0x0000 - 0xffef = this value
+    uint16_t min_temperature; // [R] ColorTempPhysicalMinMireds
+    uint16_t max_temperature; // [R] ColorTempPhysicalMaxMireds
+    uint16_t couple_min_temperature; // [R] CoupleColorTempToLevelMinMireds: temperature for level 0xfe
 } my_light_cfg_t;
 
 // All the flash variables we'll be storing (used for enum and to_string),
@@ -51,8 +51,8 @@ typedef struct my_light_cfg_s {
     X(level) \
     X(startup_level) \
     X(color_options) \
-    X(temp) \
-    X(startup_temp)
+    X(temperature) \
+    X(startup_temperature)
 
 #define MLFV_AS_ENUM(NAME) MLFV_##NAME,
 typedef enum ml_flash_var_s {

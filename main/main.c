@@ -236,7 +236,7 @@ static esp_err_t color_attribute_handler(const esp_zb_zcl_set_attr_value_message
             IF_ATTR_IS_TYPE("level", "startup_temperature", ESP_ZB_ZCL_ATTR_TYPE_U16) {
                 startup_temperature = DATA_OR(uint16_t, startup_temperature);
                 ESP_LOGI(TAG, "Startup temperature: %u", startup_temperature);
-                my_light_save_var_to_flash(MLFV_startup_temp, startup_temperature);
+                my_light_save_var_to_flash(MLFV_startup_temperature, startup_temperature);
             }
             break;
             break;

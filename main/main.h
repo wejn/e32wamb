@@ -51,9 +51,9 @@
     .level = 254, \
     .startup_level = 254, \
     .color_options = 0, \
-    .temp = 400, \
-    .startup_temp = 400, \
-    .min_temp = 153, \
-    .max_temp = 454, \
-    .couple_min_temp = 153, \
+    .temperature = 400, \
+    .startup_temperature = 400, \
+    .min_temperature = 153, \
+    .max_temperature = 454, \
+    .couple_min_temperature = 153, \
 }
