@@ -86,6 +86,11 @@ static void delayed_save_task(void *pvParameters) {
 }
 
 void trigger_delayed_save(delayed_save_type type, uint32_t value) {
+    if (!ds_initialized) {
+        ESP_LOGE(TAG, "Delayed save of %d triggered without initialization, skip.", type);
+        return;
+    }
+
     taskENTER_CRITICAL(&my_spinlock);
     switch (type) {
         case DS_onoff:
