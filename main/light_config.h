@@ -52,7 +52,7 @@ typedef struct my_light_cfg_s {
     X(startup_level) \
     X(color_options) \
     X(temperature) \
-    X(startup_temperature)
+    X(startup_temp)
 
 #define MLFV_AS_ENUM(NAME) MLFV_##NAME,
 typedef enum ml_flash_var_s {

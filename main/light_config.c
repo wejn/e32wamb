@@ -18,7 +18,7 @@
 
 static const char *TAG = "LIGHT_CONFIG";
 
-#define MLFV_AS_STRING(NAME) case MLFV_##NAME: return "mlfv_"#NAME;
+#define MLFV_AS_STRING(NAME) case MLFV_##NAME: return #NAME;
 static const char *ml_flash_var_to_key(ml_flash_var_t var) {
     switch (var) {
         _MLFV_ITER(MLFV_AS_STRING)
@@ -179,7 +179,7 @@ esp_err_t my_light_restore_cfg_from_flash(my_light_cfg_t *light_cfg) {
     }
 
     val = light_cfg->startup_temperature;
-    my_light_read_var_from_flash(nvs_handle, MLFV_startup_temperature, &val);
+    my_light_read_var_from_flash(nvs_handle, MLFV_startup_temp, &val);
     if (val == 0xffff) { // previous
         if (ESP_OK == my_light_read_var_from_flash(nvs_handle, MLFV_temperature, &val)) {
             light_cfg->temperature = val;
