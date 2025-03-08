@@ -16,6 +16,10 @@
 #include "delayed_save.h"
 
 #define LIGHT_CONFIG_NVS_NAMESPACE "light_config"
+#define STARTUP_ONOFF_TOGGLE 2
+#define STARTUP_ONOFF_PREVIOUS 0xff
+#define STARTUP_LEVEL_PREVIOUS 0xff
+#define STARTUP_TEMP_PREVIOUS 0xffff
 
 static const char *TAG = "LIGHT_CONFIG";
 
@@ -142,12 +146,12 @@ esp_err_t lc_restore_cfg_from_flash() {
         case 1: // on
             light_config_rw.onoff = 1;
             break;
-        case 2: // toggle
+        case STARTUP_ONOFF_TOGGLE:
             if (ESP_OK == lc_read_var_from_flash(nvs_handle, LCFV_onoff, &val)) {
                 light_config_rw.onoff = !((bool) val);
             }
             break;
-        case 0xff: // previous
+        case STARTUP_ONOFF_PREVIOUS:
             if (ESP_OK == lc_read_var_from_flash(nvs_handle, LCFV_onoff, &val)) {
                 light_config_rw.onoff = ((bool) val);
             }
@@ -167,7 +171,7 @@ esp_err_t lc_restore_cfg_from_flash() {
         case 0: // minimum
             light_config_rw.level = 1;
             break;
-        case 0xff: // previous
+        case STARTUP_LEVEL_PREVIOUS:
             lc_read_var_from_flash(nvs_handle, LCFV_level, &val);
             light_config_rw.level = val;
             break;
@@ -184,7 +188,7 @@ esp_err_t lc_restore_cfg_from_flash() {
 
     val = light_config_rw.startup_temperature;
     lc_read_var_from_flash(nvs_handle, LCFV_startup_temp, &val);
-    if (val == 0xffff) { // previous
+    if (val == STARTUP_TEMP_PREVIOUS) {
         if (ESP_OK == lc_read_var_from_flash(nvs_handle, LCFV_temperature, &val)) {
             light_config_rw.temperature = val;
         }
@@ -351,10 +355,16 @@ esp_err_t light_config_update(lc_flash_var_t key, uint32_t val) {
     switch (key) {
         case LCFV_onoff:
             light_config_rw.onoff = val;
-            trigger_delayed_save(DS_onoff); // FIXME: only if startup_onoff is previous
+            if (light_config->startup_onoff == STARTUP_ONOFF_PREVIOUS ||
+                    light_config->startup_onoff == STARTUP_ONOFF_TOGGLE) {
+                trigger_delayed_save(DS_onoff);
+            }
             break;
         case LCFV_startup_onoff:
             light_config_rw.startup_onoff = val;
+            if (val == STARTUP_ONOFF_PREVIOUS || val == STARTUP_ONOFF_TOGGLE) {
+                light_config_persist_var(LCFV_onoff, light_config->onoff);
+            }
             light_config_persist_var(LCFV_startup_onoff, val);
             break;
         case LCFV_level_options:
@@ -363,10 +373,15 @@ esp_err_t light_config_update(lc_flash_var_t key, uint32_t val) {
             break;
         case LCFV_level:
             light_config_rw.level = val;
-            trigger_delayed_save(DS_level); // FIXME: only if startup_level is previous
+            if (light_config->startup_level == STARTUP_LEVEL_PREVIOUS) {
+                trigger_delayed_save(DS_level);
+            }
             break;
         case LCFV_startup_level:
             light_config_rw.startup_level = val;
+            if (val == STARTUP_LEVEL_PREVIOUS) {
+                light_config_persist_var(LCFV_level, light_config->level);
+            }
             light_config_persist_var(LCFV_startup_level, val);
             break;
         case LCFV_color_options:
@@ -375,10 +390,15 @@ esp_err_t light_config_update(lc_flash_var_t key, uint32_t val) {
             break;
         case LCFV_temperature:
             light_config_rw.temperature = val;
-            trigger_delayed_save(DS_temperature); // FIXME: only if stratup_temp is previous
+            if (light_config->startup_temperature == STARTUP_TEMP_PREVIOUS) {
+                trigger_delayed_save(DS_temperature);
+            }
             break;
         case LCFV_startup_temp:
             light_config_rw.startup_temperature = val;
+            if (val == STARTUP_TEMP_PREVIOUS) {
+                light_config_persist_var(LCFV_temperature, light_config->temperature);
+            }
             light_config_persist_var(LCFV_startup_temp, val);
             break;
     }
