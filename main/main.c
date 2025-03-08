@@ -117,7 +117,7 @@ void esp_zb_app_signal_handler(esp_zb_app_signal_t *signal_struct)
         ESP_LOGI(TAG, "No longer connected to coordinator!");
         break;
     case ESP_ZB_ZDO_SIGNAL_DEVICE_ANNCE:
-        ESP_LOGI(TAG, "Rejoined network.");
+        ESP_LOGI(TAG, "Rejoined network."); // FIXME: not true, this is ANY device: https://docs.espressif.com/projects/esp-zigbee-sdk/en/latest/esp32/api-reference/zdo/esp_zigbee_zdo_common.html#_CPPv439esp_zb_zdo_signal_device_annce_params_s
         break;
     default:
         ESP_LOGI(TAG, "ZDO signal: %s (0x%x), status: %s", esp_zb_zdo_signal_to_string(sig_type), sig_type, esp_err_to_name(err_status));
