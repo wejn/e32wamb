@@ -42,6 +42,15 @@ typedef struct my_light_cfg_s {
     uint16_t couple_min_temperature; // [R] CoupleColorTempToLevelMinMireds: temperature for level 0xfe
 } my_light_cfg_t;
 
+// Global accessor of the light config
+extern const my_light_cfg_t * const my_light_cfg;
+// FIXME: make this happen; I'm thinking:
+// - Init by passing in a pointer (with sane defaults), memcopy in place; careful with the pointers to strings
+// - Spinlock for changes
+// - Gating function to write some of the variables
+//   (which also forces NVS saves, delayed saves, etc)
+// - Question is whether the gating function also invokes PWM update, or whether it provides some post-update callback
+
 // All the flash variables we'll be storing (used for enum and to_string),
 // all of them will get stored in uint32_t. All generated with MLFV_ prefix.
 #define _MLFV_ITER(X) \
