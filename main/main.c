@@ -15,6 +15,7 @@
 #include "light_config.h"
 #include "delayed_save.h"
 #include "scenes.h"
+#include "light_driver.h"
 
 #if !defined CONFIG_ZB_ZCZR
 #error Define ZB_ZCZR in idf.py menuconfig to compile light (Router) source code.
@@ -36,7 +37,11 @@ static const char *TAG = "E32WAMB";
 /********************* Define functions **************************/
 static esp_err_t deferred_driver_init(void)
 {
+    // FIXME: RGB status indicator.
     // XXX: light_driver_init(LIGHT_DEFAULT_OFF);
+    // XXX: light_driver_set_power(light_config->onoff);
+    // XXX: light_driver_set_level(light_config->level);
+    // XXX: light_driver_set_color_xy(light_color_x, light_color_y);
     return ESP_OK;
 }
 
@@ -143,8 +148,6 @@ static esp_err_t onoff_attribute_handler(const esp_zb_zcl_set_attr_value_message
         case ESP_ZB_ZCL_ATTR_ON_OFF_ON_OFF_ID:
             IF_ATTR_IS_TYPE_AND_PRESENT("onoff", "onoff", ESP_ZB_ZCL_ATTR_TYPE_BOOL) {
                 light_config_update(LCFV_onoff, *(bool *)message->attribute.data.value);
-                // FIXME: implement
-                // XXX: light_driver_set_power(light_config->onoff);
                 ESP_LOGI(TAG, "Light turns %s", light_config->onoff ? "on" : "off");
             }
             break;
@@ -177,8 +180,6 @@ static esp_err_t level_attribute_handler(const esp_zb_zcl_set_attr_value_message
         case ESP_ZB_ZCL_ATTR_LEVEL_CONTROL_CURRENT_LEVEL_ID:
             IF_ATTR_IS_TYPE_AND_PRESENT("level", "current_level", ESP_ZB_ZCL_ATTR_TYPE_U8) {
                 light_config_update(LCFV_level, *(uint8_t *)message->attribute.data.value);
-                // FIXME: implement
-                // XXX: light_driver_set_level(light_config->level);
                 ESP_LOGI(TAG, "Light level changes to %u", light_config->level);
             }
             break;
@@ -205,8 +206,6 @@ static esp_err_t color_attribute_handler(const esp_zb_zcl_set_attr_value_message
         case ESP_ZB_ZCL_ATTR_COLOR_CONTROL_COLOR_TEMPERATURE_ID:
             IF_ATTR_IS_TYPE_AND_PRESENT("color", "temperature", ESP_ZB_ZCL_ATTR_TYPE_U16) {
                 light_config_update(LCFV_temperature, *(uint16_t *)message->attribute.data.value);
-                // FIXME: implement
-                // XXX: light_driver_set_color_xy(light_color_x, light_color_y);
                 ESP_LOGI(TAG, "Light temperature change to %u", light_config->temperature);
             } 
             break;
@@ -304,8 +303,11 @@ void app_main(void)
         .radio_config = ESP_ZB_DEFAULT_RADIO_CONFIG(),
         .host_config = ESP_ZB_DEFAULT_HOST_CONFIG(),
     };
+
     ESP_ERROR_CHECK(nvs_flash_init());
     ESP_ERROR_CHECK(esp_zb_platform_config(&config));
+    ESP_ERROR_CHECK(light_driver_initialize());
     ESP_ERROR_CHECK(light_config_initialize());
+
     xTaskCreate(esp_zb_task, "Zigbee_main", 4096, NULL, 5, NULL);
 }

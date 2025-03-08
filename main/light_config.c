@@ -359,6 +359,17 @@ esp_err_t light_config_initialize() {
     create_delayed_save_task();
 
     ret = lc_restore_cfg_from_flash();
+    if (ret != ESP_OK) {
+        ESP_LOGW(TAG, "restore from flash failed: %s", esp_err_to_name(ret));
+    }
+
+    esp_err_t err = light_driver_update();
+    if (err != ESP_OK) {
+        ESP_LOGW(TAG, "light driver update failed: %s", esp_err_to_name(err));
+        if (ret == ESP_OK) {
+            ret = err;
+        }
+    }
 
     return ret;
 }
@@ -373,6 +384,7 @@ esp_err_t light_config_update(lc_flash_var_t key, uint32_t val) {
                     light_config->startup_onoff == STARTUP_ONOFF_TOGGLE) {
                 trigger_delayed_save(DS_onoff);
             }
+            ret = light_driver_update();
             break;
         case LCFV_startup_onoff:
             light_config_rw.startup_onoff = val;
@@ -390,6 +402,7 @@ esp_err_t light_config_update(lc_flash_var_t key, uint32_t val) {
             if (light_config->startup_level == STARTUP_LEVEL_PREVIOUS) {
                 trigger_delayed_save(DS_level);
             }
+            ret = light_driver_update();
             break;
         case LCFV_startup_level:
             light_config_rw.startup_level = val;
@@ -407,6 +420,7 @@ esp_err_t light_config_update(lc_flash_var_t key, uint32_t val) {
             if (light_config->startup_temperature == STARTUP_TEMP_PREVIOUS) {
                 trigger_delayed_save(DS_temperature);
             }
+            ret = light_driver_update();
             break;
         case LCFV_startup_temperature:
             light_config_rw.startup_temperature = val;
