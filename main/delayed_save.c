@@ -31,7 +31,7 @@ static void delayed_save_task(void *pvParameters) {
     bool save_temperature = false;
     bool due_to_last_triggered = false; // saving due to last triggered too much in the past
     bool due_to_last_saved = false; // saving due to last saved too much in the past
-    lc_flash_vars_t vars[3];
+    lc_flash_var_t vars[3];
     size_t num_to_save = 0;
     while (true) {
         taskENTER_CRITICAL(&my_spinlock);
@@ -57,18 +57,15 @@ static void delayed_save_task(void *pvParameters) {
 
             num_to_save = 0;
             if (save_onoff) {
-                vars[num_to_save].key = LCFV_onoff;
-                vars[num_to_save].value = light_config->onoff;
+                vars[num_to_save] = LCFV_onoff;
                 num_to_save++;
             }
             if (save_level) {
-                vars[num_to_save].key = LCFV_level;
-                vars[num_to_save].value = light_config->level;
+                vars[num_to_save] = LCFV_level;
                 num_to_save++;
             }
             if (save_temperature) {
-                vars[num_to_save].key = LCFV_temperature;
-                vars[num_to_save].value = light_config->temperature;
+                vars[num_to_save] = LCFV_temperature;
                 num_to_save++;
             }
             light_config_persist_vars(vars, num_to_save);

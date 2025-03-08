@@ -215,7 +215,7 @@ static esp_err_t color_attribute_handler(const esp_zb_zcl_set_attr_value_message
             break;
         case ESP_ZB_ZCL_ATTR_COLOR_CONTROL_START_UP_COLOR_TEMPERATURE_MIREDS_ID: // uint16
             IF_ATTR_IS_TYPE_AND_PRESENT("level", "startup_temperature", ESP_ZB_ZCL_ATTR_TYPE_U16) {
-                light_config_update(LCFV_startup_temp, *(uint16_t *)message->attribute.data.value);
+                light_config_update(LCFV_startup_temperature, *(uint16_t *)message->attribute.data.value);
                 ESP_LOGI(TAG, "Startup temperature: %u", light_config->startup_temperature);
             }
             break;

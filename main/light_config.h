@@ -55,7 +55,7 @@ extern const light_config_t * const light_config;
     X(startup_level) \
     X(color_options) \
     X(temperature) \
-    X(startup_temp)
+    X(startup_temperature)
 
 #define LCFV_AS_ENUM(NAME) LCFV_##NAME,
 typedef enum lc_flash_var_s {
@@ -63,20 +63,15 @@ typedef enum lc_flash_var_s {
 } lc_flash_var_t;
 #undef LCFV_AS_ENUM
 
-typedef struct lc_flash_vars_s {
-    lc_flash_var_t key;
-    uint32_t value;
-} lc_flash_vars_t;
-
 // Save num variables to nvs at the same time
 //
 // Normally taken care of by light_config_update()
-esp_err_t light_config_persist_vars(lc_flash_vars_t *vars, size_t num);
+esp_err_t light_config_persist_vars(lc_flash_var_t *vars, size_t num);
 
 // Save given variable (key) to nvs
 //
 // Normally taken care of by light_config_update()
-esp_err_t light_config_persist_var(lc_flash_var_t key, uint32_t val);
+esp_err_t light_config_persist_var(lc_flash_var_t key);
 
 // Erase all keys from nvs
 esp_err_t light_config_erase_flash();
