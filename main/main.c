@@ -110,14 +110,17 @@ void esp_zb_app_signal_handler(esp_zb_app_signal_t *signal_struct)
         }
         break;
     case ESP_ZB_NLME_STATUS_INDICATION:
-        ESP_LOGI(TAG, "Network status: 0x%x", *(uint8_t *)esp_zb_app_signal_get_params(p_sg_p));
-        // no-op, this is likely something like "alive" heartbeat
+        esp_zb_zdo_signal_nwk_status_indication_params_t *ns = (esp_zb_zdo_signal_nwk_status_indication_params_t *) esp_zb_app_signal_get_params(p_sg_p);
+        ESP_LOGI(TAG, "Network status: 0x%x for address: 0x%04hx (uci: 0x%x)", ns->status, ns->network_addr, ns->unknown_command_id);
+        // Informative messages about given device on network; see https://docs.espressif.com/projects/esp-zigbee-sdk/en/latest/esp32/api-reference/nwk/esp_zigbee_nwk.html#_CPPv427esp_zb_nwk_command_status_t
         break;
     case ESP_ZB_NWK_SIGNAL_NO_ACTIVE_LINKS_LEFT:
-        ESP_LOGI(TAG, "No longer connected to coordinator!");
+        ESP_LOGI(TAG, "No longer have any peers.");
+        // This only means we're alone (no other nodes), but it can't be used to detect "offline" (without coord).
         break;
     case ESP_ZB_ZDO_SIGNAL_DEVICE_ANNCE:
-        ESP_LOGI(TAG, "Rejoined network."); // FIXME: not true, this is ANY device: https://docs.espressif.com/projects/esp-zigbee-sdk/en/latest/esp32/api-reference/zdo/esp_zigbee_zdo_common.html#_CPPv439esp_zb_zdo_signal_device_annce_params_s
+        esp_zb_zdo_signal_device_annce_params_t *da = (esp_zb_zdo_signal_device_annce_params_t *) esp_zb_app_signal_get_params(p_sg_p);
+        ESP_LOGI(TAG, "Device 0x%04hx with caps 0x%x (re-)joined network.", da->device_short_addr, da->capability);
         break;
     default:
         ESP_LOGI(TAG, "ZDO signal: %s (0x%x), status: %s", esp_zb_zdo_signal_to_string(sig_type), sig_type, esp_err_to_name(err_status));
