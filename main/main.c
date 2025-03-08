@@ -101,7 +101,7 @@ void esp_zb_app_signal_handler(esp_zb_app_signal_t *signal_struct)
             if (leave_params->leave_type == ESP_ZB_NWK_LEAVE_TYPE_RESET) {
                 ESP_LOGI(TAG, "ZDO leave: with reset, status: %s", esp_err_to_name(err_status));
                 esp_zb_nvram_erase_at_start(true); // erase previous network information.
-                my_light_erase_flash(); // erase all config from flash
+                lc_erase_flash(); // erase all config from flash
                 esp_zb_bdb_start_top_level_commissioning(ESP_ZB_BDB_MODE_NETWORK_STEERING); // steering a new network.
             } else {
                 ESP_LOGI(TAG, "ZDO leave: leave_type: %d, status: %s", leave_params->leave_type, esp_err_to_name(err_status));
@@ -167,7 +167,7 @@ static esp_err_t onoff_attribute_handler(const esp_zb_zcl_set_attr_value_message
             IF_ATTR_IS_TYPE("onoff", "startup_onoff", ESP_ZB_ZCL_ATTR_TYPE_8BIT_ENUM) {
                 startup_onoff = DATA_OR(uint8_t, startup_onoff);
                 ESP_LOGI(TAG, "Startup onoff: %u", startup_onoff);
-                my_light_save_var_to_flash(MLFV_startup_onoff, startup_onoff);
+                lc_persist_var(LCFV_startup_onoff, startup_onoff);
             }
             break;
         default:
@@ -194,14 +194,14 @@ static esp_err_t level_attribute_handler(const esp_zb_zcl_set_attr_value_message
             IF_ATTR_IS_TYPE("level", "startup_level", ESP_ZB_ZCL_ATTR_TYPE_U8) {
                 startup_level = DATA_OR(uint8_t, startup_level);
                 ESP_LOGI(TAG, "Startup level: %u", startup_level);
-                my_light_save_var_to_flash(MLFV_startup_level, startup_level);
+                lc_persist_var(LCFV_startup_level, startup_level);
             }
             break;
         case ESP_ZB_ZCL_ATTR_LEVEL_CONTROL_OPTIONS_ID: // map8
             IF_ATTR_IS_TYPE("level", "options", ESP_ZB_ZCL_ATTR_TYPE_8BITMAP) {
                 options = DATA_OR(uint8_t, options);
                 ESP_LOGI(TAG, "Level options: %x", options);
-                my_light_save_var_to_flash(MLFV_level_options, options);
+                lc_persist_var(LCFV_level_options, options);
             }
             break;
         default:
@@ -228,14 +228,14 @@ static esp_err_t color_attribute_handler(const esp_zb_zcl_set_attr_value_message
             IF_ATTR_IS_TYPE("color", "options", ESP_ZB_ZCL_ATTR_TYPE_8BITMAP) {
                 options = DATA_OR(uint8_t, options);
                 ESP_LOGI(TAG, "Color options: %x", options);
-                my_light_save_var_to_flash(MLFV_color_options, options);
+                lc_persist_var(LCFV_color_options, options);
             }
             break;
         case ESP_ZB_ZCL_ATTR_COLOR_CONTROL_START_UP_COLOR_TEMPERATURE_MIREDS_ID: // uint16
             IF_ATTR_IS_TYPE("level", "startup_temperature", ESP_ZB_ZCL_ATTR_TYPE_U16) {
                 startup_temperature = DATA_OR(uint16_t, startup_temperature);
                 ESP_LOGI(TAG, "Startup temperature: %u", startup_temperature);
-                my_light_save_var_to_flash(MLFV_startup_temp, startup_temperature);
+                lc_persist_var(LCFV_startup_temp, startup_temperature);
             }
             break;
             break;
@@ -294,8 +294,8 @@ static esp_err_t zb_action_handler(esp_zb_core_action_callback_id_t callback_id,
 static void esp_zb_task(void *pvParameters)
 {
     // Spin up light config (from hardcode + flash)
-    my_light_cfg_t mlc = MY_LIGHT_CONFIG();
-    my_light_restore_cfg_from_flash(&mlc);
+    light_config_t mlc = MY_LIGHT_CONFIG();
+    lc_restore_cfg_from_flash(&mlc);
 
     // Initialize globals
     g_onoff = mlc.onoff;
@@ -313,7 +313,7 @@ static void esp_zb_task(void *pvParameters)
 
     // Configure + start zigbee
     esp_zb_ep_list_t *light_ep = esp_zb_ep_list_create();
-    esp_zb_cluster_list_t *cluster_list = my_light_clusters_create(&mlc);
+    esp_zb_cluster_list_t *cluster_list = lc_clusters_create(&mlc);
     esp_zb_endpoint_config_t endpoint_config = MY_EP_CONFIG();
     esp_zb_ep_list_add_ep(light_ep, cluster_list, endpoint_config);
 

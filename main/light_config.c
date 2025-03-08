@@ -18,16 +18,16 @@
 
 static const char *TAG = "LIGHT_CONFIG";
 
-#define MLFV_AS_STRING(NAME) case MLFV_##NAME: return #NAME;
-static const char *ml_flash_var_to_key(ml_flash_var_t var) {
+#define LCFV_AS_STRING(NAME) case LCFV_##NAME: return #NAME;
+static const char *lc_flash_var_to_key(lc_flash_var_t var) {
     switch (var) {
-        _MLFV_ITER(MLFV_AS_STRING)
+        _LCFV_ITER(LCFV_AS_STRING)
         default: assert(!"Unknown flash variable");
     }
 }
-#undef MLFV_AS_STRING
+#undef LCFV_AS_STRING
 
-esp_err_t my_light_erase_flash() {
+esp_err_t lc_erase_flash() {
     esp_err_t err;
     nvs_handle_t nvs_handle;
 
@@ -57,15 +57,15 @@ esp_err_t my_light_erase_flash() {
 
 }
 
-esp_err_t my_light_save_var_to_flash(ml_flash_var_t key, uint32_t val) {
-    ml_flash_vars_t vars = {
+esp_err_t lc_persist_var(lc_flash_var_t key, uint32_t val) {
+    lc_flash_vars_t vars = {
         .key = key,
         .value = val,
     };
-    return my_light_save_vars_to_flash(&vars, 1);
+    return lc_persist_vars(&vars, 1);
 }
 
-esp_err_t my_light_save_vars_to_flash(ml_flash_vars_t *vars, size_t num) {
+esp_err_t lc_persist_vars(lc_flash_vars_t *vars, size_t num) {
     esp_err_t err;
     nvs_handle_t nvs_handle;
 
@@ -76,7 +76,7 @@ esp_err_t my_light_save_vars_to_flash(ml_flash_vars_t *vars, size_t num) {
     }
 
     for (size_t i = 0; i < num; i++) {
-        const char *k = ml_flash_var_to_key(vars[i].key);
+        const char *k = lc_flash_var_to_key(vars[i].key);
         err = nvs_set_u32(nvs_handle, k, vars[i].value);
         if (err == ESP_OK) {
             ESP_LOGI(TAG, "saved %s to flash: %lu", k, vars[i].value);
@@ -100,8 +100,8 @@ esp_err_t my_light_save_vars_to_flash(ml_flash_vars_t *vars, size_t num) {
     return err;
 }
 
-static esp_err_t my_light_read_var_from_flash(nvs_handle_t nvs_handle, ml_flash_var_t key, uint32_t *val) {
-    const char *k = ml_flash_var_to_key(key);
+static esp_err_t lc_read_var_from_flash(nvs_handle_t nvs_handle, lc_flash_var_t key, uint32_t *val) {
+    const char *k = lc_flash_var_to_key(key);
     esp_err_t err = nvs_get_u32(nvs_handle, k, val);
     switch (err) {
         case ESP_OK:
@@ -117,7 +117,7 @@ static esp_err_t my_light_read_var_from_flash(nvs_handle_t nvs_handle, ml_flash_
     return err;
 }
 
-esp_err_t my_light_restore_cfg_from_flash(my_light_cfg_t *light_cfg) {
+esp_err_t lc_restore_cfg_from_flash(light_config_t *light_cfg) {
     uint32_t val;
     esp_err_t err;
     nvs_handle_t nvs_handle;
@@ -130,7 +130,7 @@ esp_err_t my_light_restore_cfg_from_flash(my_light_cfg_t *light_cfg) {
 
     // onoff
     val = light_cfg->startup_onoff;
-    my_light_read_var_from_flash(nvs_handle, MLFV_startup_onoff, &val);
+    lc_read_var_from_flash(nvs_handle, LCFV_startup_onoff, &val);
     switch (val) {
         case 0: // off
             light_cfg->onoff = 0;
@@ -139,12 +139,12 @@ esp_err_t my_light_restore_cfg_from_flash(my_light_cfg_t *light_cfg) {
             light_cfg->onoff = 1;
             break;
         case 2: // toggle
-            if (ESP_OK == my_light_read_var_from_flash(nvs_handle, MLFV_onoff, &val)) {
+            if (ESP_OK == lc_read_var_from_flash(nvs_handle, LCFV_onoff, &val)) {
                 light_cfg->onoff = !((bool) val);
             }
             break;
         case 0xff: // previous
-            if (ESP_OK == my_light_read_var_from_flash(nvs_handle, MLFV_onoff, &val)) {
+            if (ESP_OK == lc_read_var_from_flash(nvs_handle, LCFV_onoff, &val)) {
                 light_cfg->onoff = ((bool) val);
             }
             break;
@@ -153,18 +153,18 @@ esp_err_t my_light_restore_cfg_from_flash(my_light_cfg_t *light_cfg) {
     }
 
     // level
-    if (ESP_OK == my_light_read_var_from_flash(nvs_handle, MLFV_level_options, &val)) {
+    if (ESP_OK == lc_read_var_from_flash(nvs_handle, LCFV_level_options, &val)) {
         light_cfg->level_options = val;
     }
 
     val = light_cfg->startup_level;
-    my_light_read_var_from_flash(nvs_handle, MLFV_startup_level, &val);
+    lc_read_var_from_flash(nvs_handle, LCFV_startup_level, &val);
     switch (val) {
         case 0: // minimum
             light_cfg->level = 1;
             break;
         case 0xff: // previous
-            my_light_read_var_from_flash(nvs_handle, MLFV_level, &val);
+            lc_read_var_from_flash(nvs_handle, LCFV_level, &val);
             light_cfg->level = val;
             break;
         default:
@@ -174,14 +174,14 @@ esp_err_t my_light_restore_cfg_from_flash(my_light_cfg_t *light_cfg) {
     }
 
     // color
-    if (ESP_OK == my_light_read_var_from_flash(nvs_handle, MLFV_color_options, &val)) {
+    if (ESP_OK == lc_read_var_from_flash(nvs_handle, LCFV_color_options, &val)) {
         light_cfg->color_options = val;
     }
 
     val = light_cfg->startup_temperature;
-    my_light_read_var_from_flash(nvs_handle, MLFV_startup_temp, &val);
+    lc_read_var_from_flash(nvs_handle, LCFV_startup_temp, &val);
     if (val == 0xffff) { // previous
-        if (ESP_OK == my_light_read_var_from_flash(nvs_handle, MLFV_temperature, &val)) {
+        if (ESP_OK == lc_read_var_from_flash(nvs_handle, LCFV_temperature, &val)) {
             light_cfg->temperature = val;
         }
     } else {
@@ -216,7 +216,7 @@ static void to_pascal_string(char *dst, const char *src, size_t size) {
     } \
 } while(0)
 
-esp_zb_cluster_list_t *my_light_clusters_create(my_light_cfg_t *light_cfg) {
+esp_zb_cluster_list_t *lc_clusters_create(light_config_t *light_cfg) {
     esp_zb_cluster_list_t *cluster_list = esp_zb_zcl_cluster_list_create();
 
     // basic cluster

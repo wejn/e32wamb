@@ -16,7 +16,7 @@ extern "C" {
 #include "esp_zigbee_core.h"
 
 // Light config for cluster creation
-typedef struct my_light_cfg_s {
+typedef struct light_config_s {
     // Basic cluster
     char *manufacturer_name; // [R] up to 32 bytes
     char *model_identifier; // [R] up to 32 bytes
@@ -40,10 +40,10 @@ typedef struct my_light_cfg_s {
     uint16_t min_temperature; // [R] ColorTempPhysicalMinMireds
     uint16_t max_temperature; // [R] ColorTempPhysicalMaxMireds
     uint16_t couple_min_temperature; // [R] CoupleColorTempToLevelMinMireds: temperature for level 0xfe
-} my_light_cfg_t;
+} light_config_t;
 
 // Global accessor of the light config
-extern const my_light_cfg_t * const my_light_cfg;
+extern const light_config_t * const light_config;
 // FIXME: make this happen; I'm thinking:
 // - Init by passing in a pointer (with sane defaults), memcopy in place; careful with the pointers to strings
 // - Spinlock for changes
@@ -52,8 +52,8 @@ extern const my_light_cfg_t * const my_light_cfg;
 // - Question is whether the gating function also invokes PWM update, or whether it provides some post-update callback
 
 // All the flash variables we'll be storing (used for enum and to_string),
-// all of them will get stored in uint32_t. All generated with MLFV_ prefix.
-#define _MLFV_ITER(X) \
+// all of them will get stored in uint32_t. All generated with LCFV_ prefix.
+#define _LCFV_ITER(X) \
     X(onoff) \
     X(startup_onoff) \
     X(level_options) \
@@ -63,31 +63,31 @@ extern const my_light_cfg_t * const my_light_cfg;
     X(temperature) \
     X(startup_temp)
 
-#define MLFV_AS_ENUM(NAME) MLFV_##NAME,
-typedef enum ml_flash_var_s {
-    _MLFV_ITER(MLFV_AS_ENUM)
-} ml_flash_var_t;
-#undef MLFV_AS_ENUM
+#define LCFV_AS_ENUM(NAME) LCFV_##NAME,
+typedef enum lc_flash_var_s {
+    _LCFV_ITER(LCFV_AS_ENUM)
+} lc_flash_var_t;
+#undef LCFV_AS_ENUM
 
-typedef struct ml_flash_vars_s {
-    ml_flash_var_t key;
+typedef struct lc_flash_vars_s {
+    lc_flash_var_t key;
     uint32_t value;
-} ml_flash_vars_t;
+} lc_flash_vars_t;
 
 // Save num variables to nvs at the same time
-esp_err_t my_light_save_vars_to_flash(ml_flash_vars_t *vars, size_t num);
+esp_err_t lc_persist_vars(lc_flash_vars_t *vars, size_t num);
 
 // Save given variable (key) to nvs
-esp_err_t my_light_save_var_to_flash(ml_flash_var_t key, uint32_t val);
+esp_err_t lc_persist_var(lc_flash_var_t key, uint32_t val);
 
 // Erase all keys from nvs
-esp_err_t my_light_erase_flash();
+esp_err_t lc_erase_flash();
 
-// Restore read-write variables of my_light_cfg_t from nvs
-esp_err_t my_light_restore_cfg_from_flash(my_light_cfg_t *light_cfg);
+// Restore read-write variables of light_config_t from nvs
+esp_err_t lc_restore_cfg_from_flash(light_config_t *light_cfg);
 
 // Create light clusters based on the config
-esp_zb_cluster_list_t *my_light_clusters_create(my_light_cfg_t *light_cfg);
+esp_zb_cluster_list_t *lc_clusters_create(light_config_t *light_cfg);
 
 #ifdef __cplusplus
 } // extern "C"

@@ -32,7 +32,7 @@ static void delayed_save_task(void *pvParameters) {
     bool save_temperature = false;
     bool due_to_last_triggered = false; // saving due to last triggered too much in the past
     bool due_to_last_saved = false; // saving due to last saved too much in the past
-    ml_flash_vars_t vars[3];
+    lc_flash_vars_t vars[3];
     size_t num_to_save = 0;
     while (true) {
         taskENTER_CRITICAL(&my_spinlock);
@@ -58,21 +58,21 @@ static void delayed_save_task(void *pvParameters) {
 
             num_to_save = 0;
             if (save_onoff) {
-                vars[num_to_save].key = MLFV_onoff;
+                vars[num_to_save].key = LCFV_onoff;
                 vars[num_to_save].value = g_onoff;
                 num_to_save++;
             }
             if (save_level) {
-                vars[num_to_save].key = MLFV_level;
+                vars[num_to_save].key = LCFV_level;
                 vars[num_to_save].value = g_level;
                 num_to_save++;
             }
             if (save_temperature) {
-                vars[num_to_save].key = MLFV_temperature;
+                vars[num_to_save].key = LCFV_temperature;
                 vars[num_to_save].value = g_temperature;
                 num_to_save++;
             }
-            my_light_save_vars_to_flash(vars, num_to_save);
+            lc_persist_vars(vars, num_to_save);
 
             // Now that we saved, go to sleep until triggered again
             xTaskNotifyWait(0, 0, NULL, portMAX_DELAY);
