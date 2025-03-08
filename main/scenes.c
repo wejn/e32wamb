@@ -6,7 +6,7 @@
  */
 #include "esp_check.h"
 #include "string.h"
-#include "light_state.h"
+#include "light_config.h"
 #include "delayed_save.h"
 #include "scenes.h"
 #include "esp_err.h"
@@ -21,9 +21,9 @@ esp_err_t store_scene(esp_zb_zcl_store_scene_message_t *msg) {
             "Received message: error status(%d)", msg->info.status);
     ESP_LOGI(TAG, "Store scene %d for group %d", msg->scene_id, msg->group_id);
 
-    uint8_t onoff = g_onoff;
-    uint8_t level = g_level;
-    uint16_t temperature = g_temperature;
+    uint8_t onoff = light_config->onoff;
+    uint8_t level = light_config->level;
+    uint16_t temperature = light_config->temperature;
 
     esp_zb_zcl_scenes_extension_field_t onoff_field = {
         .cluster_id = ESP_ZB_ZCL_CLUSTER_ID_ON_OFF,
@@ -65,8 +65,7 @@ esp_err_t recall_scene(esp_zb_zcl_recall_scene_message_t *msg) {
     while (f) {
         switch (f->cluster_id) {
             case ESP_ZB_ZCL_CLUSTER_ID_ON_OFF:
-                // FIXME: sync with attribute handler
-                g_onoff = (bool) *(uint8_t*) f->extension_field_attribute_value_list;
+                light_config_update(LCFV_onoff, *(uint8_t*) f->extension_field_attribute_value_list);
                 esp_zb_zcl_set_attribute_val(
                         msg->info.dst_endpoint,
                         ESP_ZB_ZCL_CLUSTER_ID_ON_OFF,
@@ -77,8 +76,7 @@ esp_err_t recall_scene(esp_zb_zcl_recall_scene_message_t *msg) {
                 trigger_delayed_save(DS_onoff);
                 break;
             case ESP_ZB_ZCL_CLUSTER_ID_LEVEL_CONTROL:
-                // FIXME: sync with attribute handler
-                g_level = *(uint8_t*) f->extension_field_attribute_value_list;
+                light_config_update(LCFV_level, *(uint8_t*) f->extension_field_attribute_value_list);
                 esp_zb_zcl_set_attribute_val(
                         msg->info.dst_endpoint,
                         ESP_ZB_ZCL_CLUSTER_ID_LEVEL_CONTROL,
@@ -89,8 +87,7 @@ esp_err_t recall_scene(esp_zb_zcl_recall_scene_message_t *msg) {
                 trigger_delayed_save(DS_level);
                 break;
             case ESP_ZB_ZCL_CLUSTER_ID_COLOR_CONTROL:
-                // FIXME: sync with attribute handler
-                g_temperature = *(uint16_t*) f->extension_field_attribute_value_list;
+                light_config_update(LCFV_temperature, *(uint16_t*) f->extension_field_attribute_value_list);
                 esp_zb_zcl_set_attribute_val(
                         msg->info.dst_endpoint,
                         ESP_ZB_ZCL_CLUSTER_ID_COLOR_CONTROL,

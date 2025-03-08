@@ -13,7 +13,6 @@
 #include "freertos/task.h"
 #include "ha/esp_zigbee_ha_standard.h"
 #include "light_config.h"
-#include "light_state.h"
 #include "delayed_save.h"
 #include "scenes.h"
 
@@ -101,7 +100,7 @@ void esp_zb_app_signal_handler(esp_zb_app_signal_t *signal_struct)
             if (leave_params->leave_type == ESP_ZB_NWK_LEAVE_TYPE_RESET) {
                 ESP_LOGI(TAG, "ZDO leave: with reset, status: %s", esp_err_to_name(err_status));
                 esp_zb_nvram_erase_at_start(true); // erase previous network information.
-                lc_erase_flash(); // erase all config from flash
+                light_config_erase_flash(); // erase all config from flash
                 esp_zb_bdb_start_top_level_commissioning(ESP_ZB_BDB_MODE_NETWORK_STEERING); // steering a new network.
             } else {
                 ESP_LOGI(TAG, "ZDO leave: leave_type: %d, status: %s", leave_params->leave_type, esp_err_to_name(err_status));
@@ -126,48 +125,42 @@ void esp_zb_app_signal_handler(esp_zb_app_signal_t *signal_struct)
     }
 }
 
-#define DATA_OR(type, deflt) (message->attribute.data.value ? *(type *)message->attribute.data.value : deflt)
 #define WARN_UNKNOWN(cluster) \
     ESP_LOGW(TAG, "%s attr: unknown attribute(0x%x), type(0x%x), data size(%d)", cluster, message->attribute.id, message->attribute.data.type, message->attribute.data.size)
-#define IF_ATTR_IS_TYPE(cluster, attr, attr_type) \
+#define IF_ATTR_IS_TYPE_AND_PRESENT(cluster, attr, attr_type) \
     if (message->attribute.data.type != attr_type) { \
         ESP_LOGW(TAG, "%s: unexpected type for %s: expected %s, got type(0x%x) with size(%d)", cluster, attr, #attr_type, message->attribute.data.type, message->attribute.data.size); \
+    } else if (! message->attribute.data.value) { \
+        ESP_LOGW(TAG, "%s: unexpectedly no value for %s", cluster, attr); \
     } else
 
-static esp_err_t onoff_attribute_handler(const esp_zb_zcl_set_attr_value_message_t *message) {
-    uint16_t on_time = 0;
-    uint16_t off_wait_time = 0;
-    uint8_t startup_onoff = 0;
 
+static esp_err_t onoff_attribute_handler(const esp_zb_zcl_set_attr_value_message_t *message) {
     switch (message->attribute.id) {
         case ESP_ZB_ZCL_ATTR_ON_OFF_ON_OFF_ID:
-            IF_ATTR_IS_TYPE("onoff", "onoff", ESP_ZB_ZCL_ATTR_TYPE_BOOL) {
-                g_onoff = DATA_OR(bool, g_onoff);
+            IF_ATTR_IS_TYPE_AND_PRESENT("onoff", "onoff", ESP_ZB_ZCL_ATTR_TYPE_BOOL) {
+                light_config_update(LCFV_onoff, *(bool *)message->attribute.data.value);
                 // FIXME: implement
-                // XXX: light_driver_set_power(light_state);
-                ESP_LOGI(TAG, "Light sets to %s", g_onoff ? "On" : "Off");
-                trigger_delayed_save(DS_onoff);
+                // XXX: light_driver_set_power(light_config->onoff);
+                ESP_LOGI(TAG, "Light turns %s", light_config->onoff ? "on" : "off");
             }
             break;
         case ESP_ZB_ZCL_ATTR_ON_OFF_ON_TIME: // uint16
-            IF_ATTR_IS_TYPE("onoff", "on_time", ESP_ZB_ZCL_ATTR_TYPE_U16) {
-                on_time = DATA_OR(uint16_t, on_time);
-                ESP_LOGI(TAG, "On time: %u", on_time);
+            IF_ATTR_IS_TYPE_AND_PRESENT("onoff", "on_time", ESP_ZB_ZCL_ATTR_TYPE_U16) {
                 // no-op, handled internally by zboss
+                ESP_LOGI(TAG, "On time: %u", *(uint16_t *)message->attribute.data.value);
             }
             break;
         case ESP_ZB_ZCL_ATTR_ON_OFF_OFF_WAIT_TIME: // uint16
-            IF_ATTR_IS_TYPE("onoff", "off_wait_time", ESP_ZB_ZCL_ATTR_TYPE_U16) {
-                off_wait_time = DATA_OR(uint16_t, off_wait_time);
-                ESP_LOGI(TAG, "Off wait time: %u", off_wait_time);
+            IF_ATTR_IS_TYPE_AND_PRESENT("onoff", "off_wait_time", ESP_ZB_ZCL_ATTR_TYPE_U16) {
                 // no-op, handled internally by zboss
+                ESP_LOGI(TAG, "Off wait time: %u", *(uint16_t *)message->attribute.data.value);
             }
             break;
         case ESP_ZB_ZCL_ATTR_ON_OFF_START_UP_ON_OFF: // enum8
-            IF_ATTR_IS_TYPE("onoff", "startup_onoff", ESP_ZB_ZCL_ATTR_TYPE_8BIT_ENUM) {
-                startup_onoff = DATA_OR(uint8_t, startup_onoff);
-                ESP_LOGI(TAG, "Startup onoff: %u", startup_onoff);
-                lc_persist_var(LCFV_startup_onoff, startup_onoff);
+            IF_ATTR_IS_TYPE_AND_PRESENT("onoff", "startup_onoff", ESP_ZB_ZCL_ATTR_TYPE_8BIT_ENUM) {
+                light_config_update(LCFV_startup_onoff, *(uint8_t *)message->attribute.data.value);
+                ESP_LOGI(TAG, "Startup onoff: %u", light_config->startup_onoff);
             }
             break;
         default:
@@ -177,31 +170,25 @@ static esp_err_t onoff_attribute_handler(const esp_zb_zcl_set_attr_value_message
 }
 
 static esp_err_t level_attribute_handler(const esp_zb_zcl_set_attr_value_message_t *message) {
-    uint8_t startup_level = 0;
-    uint8_t options = 0;
-
     switch (message->attribute.id) {
         case ESP_ZB_ZCL_ATTR_LEVEL_CONTROL_CURRENT_LEVEL_ID:
-            IF_ATTR_IS_TYPE("level", "current_level", ESP_ZB_ZCL_ATTR_TYPE_U8) {
-                g_level = DATA_OR(uint8_t, g_level);
+            IF_ATTR_IS_TYPE_AND_PRESENT("level", "current_level", ESP_ZB_ZCL_ATTR_TYPE_U8) {
+                light_config_update(LCFV_level, *(uint8_t *)message->attribute.data.value);
                 // FIXME: implement
-                // XXX: light_driver_set_level((uint8_t)g_level);
-                ESP_LOGI(TAG, "Light level changes to %u", g_level);
-                trigger_delayed_save(DS_level);
+                // XXX: light_driver_set_level(light_config->level);
+                ESP_LOGI(TAG, "Light level changes to %u", light_config->level);
             }
             break;
         case ESP_ZB_ZCL_ATTR_LEVEL_CONTROL_START_UP_CURRENT_LEVEL_ID: // uint8
-            IF_ATTR_IS_TYPE("level", "startup_level", ESP_ZB_ZCL_ATTR_TYPE_U8) {
-                startup_level = DATA_OR(uint8_t, startup_level);
-                ESP_LOGI(TAG, "Startup level: %u", startup_level);
-                lc_persist_var(LCFV_startup_level, startup_level);
+            IF_ATTR_IS_TYPE_AND_PRESENT("level", "startup_level", ESP_ZB_ZCL_ATTR_TYPE_U8) {
+                light_config_update(LCFV_startup_level, *(uint8_t *)message->attribute.data.value);
+                ESP_LOGI(TAG, "Startup level: %u", light_config->startup_level);
             }
             break;
         case ESP_ZB_ZCL_ATTR_LEVEL_CONTROL_OPTIONS_ID: // map8
-            IF_ATTR_IS_TYPE("level", "options", ESP_ZB_ZCL_ATTR_TYPE_8BITMAP) {
-                options = DATA_OR(uint8_t, options);
-                ESP_LOGI(TAG, "Level options: %x", options);
-                lc_persist_var(LCFV_level_options, options);
+            IF_ATTR_IS_TYPE_AND_PRESENT("level", "options", ESP_ZB_ZCL_ATTR_TYPE_8BITMAP) {
+                light_config_update(LCFV_level_options, *(uint8_t *)message->attribute.data.value);
+                ESP_LOGI(TAG, "Level options: %x", light_config->level_options);
             }
             break;
         default:
@@ -211,33 +198,26 @@ static esp_err_t level_attribute_handler(const esp_zb_zcl_set_attr_value_message
 }
 
 static esp_err_t color_attribute_handler(const esp_zb_zcl_set_attr_value_message_t *message) {
-    uint16_t startup_temperature = 0;
-    uint8_t options = 0;
-
     switch (message->attribute.id) {
         case ESP_ZB_ZCL_ATTR_COLOR_CONTROL_COLOR_TEMPERATURE_ID:
-            IF_ATTR_IS_TYPE("color", "temperature", ESP_ZB_ZCL_ATTR_TYPE_U16) {
-                g_temperature = DATA_OR(uint16_t, g_temperature);
+            IF_ATTR_IS_TYPE_AND_PRESENT("color", "temperature", ESP_ZB_ZCL_ATTR_TYPE_U16) {
+                light_config_update(LCFV_temperature, *(uint16_t *)message->attribute.data.value);
                 // FIXME: implement
                 // XXX: light_driver_set_color_xy(light_color_x, light_color_y);
-                ESP_LOGI(TAG, "Light temperature change to %u", g_temperature);
-                trigger_delayed_save(DS_temperature);
+                ESP_LOGI(TAG, "Light temperature change to %u", light_config->temperature);
             } 
             break;
         case ESP_ZB_ZCL_ATTR_COLOR_CONTROL_OPTIONS_ID: // map8
-            IF_ATTR_IS_TYPE("color", "options", ESP_ZB_ZCL_ATTR_TYPE_8BITMAP) {
-                options = DATA_OR(uint8_t, options);
-                ESP_LOGI(TAG, "Color options: %x", options);
-                lc_persist_var(LCFV_color_options, options);
+            IF_ATTR_IS_TYPE_AND_PRESENT("color", "options", ESP_ZB_ZCL_ATTR_TYPE_8BITMAP) {
+                light_config_update(LCFV_color_options, *(uint8_t *)message->attribute.data.value);
+                ESP_LOGI(TAG, "Color options: %x", light_config->color_options);
             }
             break;
         case ESP_ZB_ZCL_ATTR_COLOR_CONTROL_START_UP_COLOR_TEMPERATURE_MIREDS_ID: // uint16
-            IF_ATTR_IS_TYPE("level", "startup_temperature", ESP_ZB_ZCL_ATTR_TYPE_U16) {
-                startup_temperature = DATA_OR(uint16_t, startup_temperature);
-                ESP_LOGI(TAG, "Startup temperature: %u", startup_temperature);
-                lc_persist_var(LCFV_startup_temp, startup_temperature);
+            IF_ATTR_IS_TYPE_AND_PRESENT("level", "startup_temperature", ESP_ZB_ZCL_ATTR_TYPE_U16) {
+                light_config_update(LCFV_startup_temp, *(uint16_t *)message->attribute.data.value);
+                ESP_LOGI(TAG, "Startup temperature: %u", light_config->startup_temperature);
             }
-            break;
             break;
         default:
             WARN_UNKNOWN("color");
@@ -293,15 +273,6 @@ static esp_err_t zb_action_handler(esp_zb_core_action_callback_id_t callback_id,
 
 static void esp_zb_task(void *pvParameters)
 {
-    // Spin up light config (from hardcode + flash)
-    light_config_t mlc = MY_LIGHT_CONFIG();
-    lc_restore_cfg_from_flash(&mlc);
-
-    // Initialize globals
-    g_onoff = mlc.onoff;
-    g_level = mlc.level;
-    g_temperature = mlc.temperature;
-
     // initialize Zigbee stack
     esp_zb_cfg_t zb_nwk_cfg = ESP_ZB_ZR_CONFIG();
     esp_zb_init(&zb_nwk_cfg);
@@ -313,7 +284,7 @@ static void esp_zb_task(void *pvParameters)
 
     // Configure + start zigbee
     esp_zb_ep_list_t *light_ep = esp_zb_ep_list_create();
-    esp_zb_cluster_list_t *cluster_list = lc_clusters_create(&mlc);
+    esp_zb_cluster_list_t *cluster_list = light_config_clusters_create();
     esp_zb_endpoint_config_t endpoint_config = MY_EP_CONFIG();
     esp_zb_ep_list_add_ep(light_ep, cluster_list, endpoint_config);
 
@@ -332,12 +303,6 @@ void app_main(void)
     };
     ESP_ERROR_CHECK(nvs_flash_init());
     ESP_ERROR_CHECK(esp_zb_platform_config(&config));
-    // FIXME: maybe light state globals should be initialized by now.
-    // But that would need mlc spin up here (and passed onto esp_zb_task).
-    // But that means it should survive the end of app_main. Do we want
-    // another static? ;)
-    //
-    // Decide when the time for more complex light_state comes.
-    create_delayed_save_task();
+    ESP_ERROR_CHECK(light_config_initialize());
     xTaskCreate(esp_zb_task, "Zigbee_main", 4096, NULL, 5, NULL);
 }

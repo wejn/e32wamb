@@ -15,7 +15,7 @@ extern "C" {
 #include "esp_check.h"
 #include "esp_zigbee_core.h"
 
-// Light config for cluster creation
+// Light config for state tracking & zibgbee cluster creation
 typedef struct light_config_s {
     // Basic cluster
     char *manufacturer_name; // [R] up to 32 bytes
@@ -44,12 +44,6 @@ typedef struct light_config_s {
 
 // Global accessor of the light config
 extern const light_config_t * const light_config;
-// FIXME: make this happen; I'm thinking:
-// - Init by passing in a pointer (with sane defaults), memcopy in place; careful with the pointers to strings
-// - Spinlock for changes
-// - Gating function to write some of the variables
-//   (which also forces NVS saves, delayed saves, etc)
-// - Question is whether the gating function also invokes PWM update, or whether it provides some post-update callback
 
 // All the flash variables we'll be storing (used for enum and to_string),
 // all of them will get stored in uint32_t. All generated with LCFV_ prefix.
@@ -75,19 +69,29 @@ typedef struct lc_flash_vars_s {
 } lc_flash_vars_t;
 
 // Save num variables to nvs at the same time
-esp_err_t lc_persist_vars(lc_flash_vars_t *vars, size_t num);
+//
+// Normally taken care of by light_config_update()
+esp_err_t light_config_persist_vars(lc_flash_vars_t *vars, size_t num);
 
 // Save given variable (key) to nvs
-esp_err_t lc_persist_var(lc_flash_var_t key, uint32_t val);
+//
+// Normally taken care of by light_config_update()
+esp_err_t light_config_persist_var(lc_flash_var_t key, uint32_t val);
 
 // Erase all keys from nvs
-esp_err_t lc_erase_flash();
+esp_err_t light_config_erase_flash();
 
-// Restore read-write variables of light_config_t from nvs
-esp_err_t lc_restore_cfg_from_flash(light_config_t *light_cfg);
+// Create zigbee light clusters based on the config
+esp_zb_cluster_list_t *light_config_clusters_create();
 
-// Create light clusters based on the config
-esp_zb_cluster_list_t *lc_clusters_create(light_config_t *light_cfg);
+// Initialize light config and dependent subsystems
+//
+// This should be called *after* NVS is initialized, but before anyone
+// touches light_config.
+esp_err_t light_config_initialize();
+
+// Update given writeable variable
+esp_err_t light_config_update(lc_flash_var_t key, uint32_t val);
 
 #ifdef __cplusplus
 } // extern "C"

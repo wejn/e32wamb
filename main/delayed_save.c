@@ -7,7 +7,6 @@
 #include <stdint.h>
 #include "delayed_save.h"
 #include "light_config.h"
-#include "light_state.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "esp_timer.h"
@@ -59,20 +58,20 @@ static void delayed_save_task(void *pvParameters) {
             num_to_save = 0;
             if (save_onoff) {
                 vars[num_to_save].key = LCFV_onoff;
-                vars[num_to_save].value = g_onoff;
+                vars[num_to_save].value = light_config->onoff;
                 num_to_save++;
             }
             if (save_level) {
                 vars[num_to_save].key = LCFV_level;
-                vars[num_to_save].value = g_level;
+                vars[num_to_save].value = light_config->level;
                 num_to_save++;
             }
             if (save_temperature) {
                 vars[num_to_save].key = LCFV_temperature;
-                vars[num_to_save].value = g_temperature;
+                vars[num_to_save].value = light_config->temperature;
                 num_to_save++;
             }
-            lc_persist_vars(vars, num_to_save);
+            light_config_persist_vars(vars, num_to_save);
 
             // Now that we saved, go to sleep until triggered again
             xTaskNotifyWait(0, 0, NULL, portMAX_DELAY);
