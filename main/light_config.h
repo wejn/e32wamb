@@ -3,6 +3,10 @@
  * Written in 2025 by Michal Jirků (wejn)
  *
  * This code is licensed under AGPL version 3.
+ *
+ * Purpose: Provides comprehensive config about the light as well as unified
+ * accessors for the data. Calls into light_driver and delayed_save where
+ * needed.
  */
 
 #pragma once

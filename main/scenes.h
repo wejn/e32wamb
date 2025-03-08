@@ -3,6 +3,8 @@
  * Written in 2025 by Michal Jirků (wejn)
  *
  * This code is licensed under AGPL version 3.
+ *
+ * Purpose: Scene handler callbacks for the zigbee handler.
  */
 
 #pragma once

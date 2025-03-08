@@ -3,6 +3,9 @@
  * Written in 2025 by Michal Jirků (wejn)
  *
  * This code is licensed under AGPL version 3.
+ *
+ * Purpose: Global config for all aspects of the light (zigbee endpoint config,
+ * light config, etc).
  */
 
 #pragma once

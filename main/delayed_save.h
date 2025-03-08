@@ -3,6 +3,9 @@
  * Written in 2025 by Michal Jirků (wejn)
  *
  * This code is licensed under AGPL version 3.
+ *
+ * Purpose: Takes care of delayed saving into flash, triggered from
+ * light_config, and calls back into it.
  */
 
 #pragma once

@@ -3,6 +3,9 @@
  * Written in 2025 by Michal Jirků (wejn)
  *
  * This code is licensed under AGPL version 3.
+ *
+ * Purpose: Drives the PWM for the light, configured according to
+ * global_config.
  */
 
 #pragma once
