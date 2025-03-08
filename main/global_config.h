@@ -62,3 +62,10 @@
     .max_temperature = 454, \
     .couple_min_temperature = 153, \
 }
+
+#define RGB_INDICATOR_GPIO 8 // FIXME: not used yet
+#define MY_LIGHT_PWM_CH0_GPIO 18
+#define MY_LIGHT_PWM_CH1_GPIO 19
+#define MY_LIGHT_PWM_CH2_GPIO 20
+#define MY_LIGHT_PWM_CH3_GPIO 21
+#define MY_LIGHT_PWM_CH4_GPIO 22

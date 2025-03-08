@@ -48,6 +48,7 @@ typedef struct light_config_s {
 
 // Global accessor of the light config
 extern const light_config_t * const light_config;
+extern const bool * const light_config_initialized;
 
 // All the flash variables we'll be storing (used for enum and to_string),
 // all of them will get stored in uint32_t. All generated with LCFV_ prefix.

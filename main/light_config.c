@@ -24,7 +24,10 @@
 static const char *TAG = "LIGHT_CONFIG";
 
 static light_config_t light_config_rw = MY_LIGHT_CONFIG();
+bool light_config_initialized_rw = false;
 const light_config_t * const light_config = &light_config_rw;
+const bool * const light_config_initialized = &light_config_initialized_rw;
+
 
 #if(NVS_KEY_NAME_MAX_SIZE < 16)
 #error We need at least 16 byte nvs keys
@@ -362,6 +365,8 @@ esp_err_t light_config_initialize() {
     if (ret != ESP_OK) {
         ESP_LOGW(TAG, "restore from flash failed: %s", esp_err_to_name(ret));
     }
+
+    light_config_initialized_rw = true;
 
     esp_err_t err = light_driver_update();
     if (err != ESP_OK) {
