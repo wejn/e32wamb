@@ -45,6 +45,7 @@ static void light_driver_task(void *pvParameters) {
                     ledc_set_duty(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_4, 0); // XXX: unused
                 } else {
                     // FIXME: take light_config->level_options&2 into consideration!
+                    // FIXME: switching immediately to the new value is terribly jumpy fading into it is going to be better
                     double normal = color_normal[light_config->temperature - COLOR_MIN_TEMPERATURE] * brightness_normal[light_config->level];
                     double cold = color_cold[light_config->temperature - COLOR_MIN_TEMPERATURE] * brightness_cold[light_config->level];
                     double warm = color_warm[light_config->temperature - COLOR_MIN_TEMPERATURE] * brightness_warm[light_config->level];
@@ -77,12 +78,6 @@ esp_err_t light_driver_update() {
     return ESP_OK;
 }
 
-#define CONFIG_LED_PIN(PIN) do { \
-    gpio_reset_pin(PIN); \
-    gpio_set_direction(PIN, GPIO_MODE_OUTPUT); \
-    gpio_set_level(PIN, 0); \
-} while(0)
-
 #define CONFIG_CHAN(PIN, NUM) do { \
         ledc_channel_config_t chan_##NUM = { \
             .speed_mode = LEDC_LOW_SPEED_MODE, \
@@ -107,11 +102,18 @@ esp_err_t light_driver_initialize() {
     if (ld_initialized) {
         ESP_LOGW(TAG, "Attempted to initialized light driver more than once");
     } else {
-        CONFIG_LED_PIN(MY_LIGHT_PWM_CH0_GPIO);
-        CONFIG_LED_PIN(MY_LIGHT_PWM_CH1_GPIO);
-        CONFIG_LED_PIN(MY_LIGHT_PWM_CH2_GPIO);
-        CONFIG_LED_PIN(MY_LIGHT_PWM_CH3_GPIO);
-        CONFIG_LED_PIN(MY_LIGHT_PWM_CH4_GPIO);
+        gpio_config_t io_conf = {
+            .intr_type = GPIO_INTR_DISABLE,
+            .mode = GPIO_MODE_OUTPUT,
+            .pin_bit_mask = 1ULL<<MY_LIGHT_PWM_CH0_GPIO | 1ULL<<MY_LIGHT_PWM_CH1_GPIO | 1ULL<<MY_LIGHT_PWM_CH2_GPIO |
+                1ULL<<MY_LIGHT_PWM_CH3_GPIO | 1ULL<<MY_LIGHT_PWM_CH4_GPIO,
+            .pull_down_en = 1,
+            .pull_up_en = 0,
+        };
+        ret = gpio_config(&io_conf);
+        if (ret != ESP_OK) {
+            ESP_LOGW(TAG, "gpio_config failed with: %s", esp_err_to_name(ret));
+        }
 
         ledc_timer_t timer = LEDC_TIMER_0;
 
