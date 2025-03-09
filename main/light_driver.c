@@ -12,10 +12,19 @@
 #include "freertos/task.h"
 #include "driver/gpio.h"
 #include "driver/ledc.h"
+#include "data_tables.h"
 
 static const char *TAG = "LIGHT_DRIVER";
 static TaskHandle_t ld_task_handle;
 volatile static bool ld_initialized = false;
+
+#define COLOR_TABLE_SIZE COLOR_MAX_TEMPERATURE - COLOR_MIN_TEMPERATURE + 1
+static double color_normal[COLOR_TABLE_SIZE] = COLOR_DATA_NORMAL;
+static double color_cold[COLOR_TABLE_SIZE] = COLOR_DATA_COLD;
+static double color_warm[COLOR_TABLE_SIZE] = COLOR_DATA_HOT;
+static double brightness_normal[256] = BRIGHTNESS_DATA_NORMAL;
+static double brightness_cold[256] = BRIGHTNESS_DATA_COLD;
+static double brightness_warm[256] = BRIGHTNESS_DATA_HOT;
 
 #define MAX_DUTY 8191 // 2**13 - 1
 
@@ -28,20 +37,23 @@ static void light_driver_task(void *pvParameters) {
                 ESP_LOGW(TAG, "The light_config not initialized yet, skip");
             } else {
                 if (! light_config->onoff) {
-                    ESP_LOGI(TAG, "Set to off"); // FIXME
+                    // ESP_LOGI(TAG, "Set to off");
                     ledc_set_duty(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_0, 0);
                     ledc_set_duty(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_1, 0);
                     ledc_set_duty(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_2, 0);
-                    ledc_set_duty(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_3, 0);
-                    ledc_set_duty(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_4, 0);
+                    ledc_set_duty(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_3, 0); // XXX: unused
+                    ledc_set_duty(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_4, 0); // XXX: unused
                 } else {
-                    ESP_LOGI(TAG, "Set to some on"); // FIXME
-                    ledc_set_duty(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_0, MAX_DUTY / 20);
-                    ledc_set_duty(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_1, MAX_DUTY / 10);
-                    ledc_set_duty(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_2, MAX_DUTY / 5);
-                    ledc_set_duty(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_3, MAX_DUTY / 2);
-                    ledc_set_duty(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_4, MAX_DUTY);
-                    // FIXME: implement
+                    // FIXME: take light_config->level_options&2 into consideration!
+                    double normal = color_normal[light_config->temperature - COLOR_MIN_TEMPERATURE] * brightness_normal[light_config->level];
+                    double cold = color_cold[light_config->temperature - COLOR_MIN_TEMPERATURE] * brightness_cold[light_config->level];
+                    double warm = color_warm[light_config->temperature - COLOR_MIN_TEMPERATURE] * brightness_warm[light_config->level];
+                    // ESP_LOGI(TAG, "Set to %.04f, %.04f, %.04f", normal, cold, warm);
+                    ledc_set_duty(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_0, MAX_DUTY * normal);
+                    ledc_set_duty(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_1, MAX_DUTY * cold);
+                    ledc_set_duty(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_2, MAX_DUTY * warm);
+                    ledc_set_duty(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_3, 0); // XXX: unused
+                    ledc_set_duty(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_4, 0); // XXX: unused
                 }
                 ledc_update_duty(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_0);
                 ledc_update_duty(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_1);

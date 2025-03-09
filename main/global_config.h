@@ -43,6 +43,9 @@
     .app_device_version = 1, \
 }
 
+#define COLOR_MIN_TEMPERATURE 153
+#define COLOR_MAX_TEMPERATURE 454
+
 /* Used to initialize light_config_t in light_config.c */
 #define MY_LIGHT_CONFIG() { \
     .manufacturer_name = "wejn.org", \
@@ -56,16 +59,16 @@
     .level = 254, \
     .startup_level = 254, \
     .color_options = 0, \
-    .temperature = 400, \
-    .startup_temperature = 400, \
-    .min_temperature = 153, \
-    .max_temperature = 454, \
-    .couple_min_temperature = 153, \
+    .temperature = 366, \
+    .startup_temperature = 366, \
+    .min_temperature = COLOR_MIN_TEMPERATURE, \
+    .max_temperature = COLOR_MAX_TEMPERATURE, \
+    .couple_min_temperature = COLOR_MIN_TEMPERATURE, \
 }
 
 #define RGB_INDICATOR_GPIO 8 // FIXME: not used yet
-#define MY_LIGHT_PWM_CH0_GPIO 18
-#define MY_LIGHT_PWM_CH1_GPIO 19
-#define MY_LIGHT_PWM_CH2_GPIO 20
-#define MY_LIGHT_PWM_CH3_GPIO 21
-#define MY_LIGHT_PWM_CH4_GPIO 22
+#define MY_LIGHT_PWM_CH0_GPIO 18 // normal
+#define MY_LIGHT_PWM_CH1_GPIO 19 // cold
+#define MY_LIGHT_PWM_CH2_GPIO 20 // hot
+#define MY_LIGHT_PWM_CH3_GPIO 21 // unused
+#define MY_LIGHT_PWM_CH4_GPIO 22 // unused
