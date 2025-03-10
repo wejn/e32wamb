@@ -7,9 +7,6 @@ message(STATUS "Project Version: ${PROJECT_VER}")
 message(STATUS "Date code: ${BUILD_TIMESTAMP}")
 message(STATUS "Git rev: ${GIT_FULL_REV_ID}")
 
-set(EXTRA_COMPONENT_DIRS
-    ${CMAKE_CURRENT_SOURCE_DIR}/light_driver
-    )
 include($ENV{IDF_PATH}/tools/cmake/project.cmake)
 project(e32wamb)
 

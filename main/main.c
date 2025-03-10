@@ -16,6 +16,7 @@
 #include "delayed_save.h"
 #include "scenes.h"
 #include "light_driver.h"
+#include "indicator_led.h"
 
 #if !defined CONFIG_ZB_ZCZR
 #error Define ZB_ZCZR in idf.py menuconfig to compile light (Router) source code.
@@ -33,17 +34,6 @@
 #endif
 
 static const char *TAG = "E32WAMB";
-
-/********************* Define functions **************************/
-static esp_err_t deferred_driver_init(void)
-{
-    // FIXME: RGB status indicator.
-    // XXX: light_driver_init(LIGHT_DEFAULT_OFF);
-    // XXX: light_driver_set_power(light_config->onoff);
-    // XXX: light_driver_set_level(light_config->level);
-    // XXX: light_driver_set_color_xy(light_color_x, light_color_y);
-    return ESP_OK;
-}
 
 static void bdb_start_top_level_commissioning_cb(uint8_t mode_mask)
 {
@@ -63,13 +53,12 @@ void esp_zb_app_signal_handler(esp_zb_app_signal_t *signal_struct)
     case ESP_ZB_BDB_SIGNAL_DEVICE_FIRST_START:
     case ESP_ZB_BDB_SIGNAL_DEVICE_REBOOT:
         if (err_status == ESP_OK) {
-            ESP_LOGI(TAG, "Deferred driver initialization %s", deferred_driver_init() ? "failed" : "successful");
             ESP_LOGI(TAG, "Device started up in %s factory-reset mode", esp_zb_bdb_is_factory_new() ? "" : "non");
             if (esp_zb_bdb_is_factory_new()) {
                 ESP_LOGI(TAG, "Start network steering");
                 esp_zb_bdb_start_top_level_commissioning(ESP_ZB_BDB_MODE_NETWORK_STEERING);
             } else {
-                ESP_LOGI(TAG, "Device rebooted");
+                ESP_LOGI(TAG, "Device rebooted, joining network 0x%04hx as 0x%04hx", esp_zb_get_pan_id(), esp_zb_get_short_address());
             }
         } else {
             ESP_LOGW(TAG, "Failed to initialize Zigbee stack (status: %s)", esp_err_to_name(err_status));
@@ -120,8 +109,9 @@ void esp_zb_app_signal_handler(esp_zb_app_signal_t *signal_struct)
         // Informative messages about given device on network; see https://docs.espressif.com/projects/esp-zigbee-sdk/en/latest/esp32/api-reference/nwk/esp_zigbee_nwk.html#_CPPv427esp_zb_nwk_command_status_t
         break;
     case ESP_ZB_NWK_SIGNAL_NO_ACTIVE_LINKS_LEFT:
-        ESP_LOGI(TAG, "No longer have any peers.");
-        // This only means we're alone (no other nodes), but it can't be used to detect "offline" (without coord).
+        // This only means we're alone (no other nodes), but it can't be used to detect "offline" status;
+        // i.e. a situation without coord, but with other routers/end devices present.
+        ESP_LOGI(TAG, "Do not have any peers.");
         break;
     case ESP_ZB_ZDO_SIGNAL_DEVICE_ANNCE:
         esp_zb_zdo_signal_device_annce_params_t *da = (esp_zb_zdo_signal_device_annce_params_t *) esp_zb_app_signal_get_params(p_sg_p);
@@ -297,8 +287,74 @@ static void esp_zb_task(void *pvParameters)
     esp_zb_stack_main_loop();
 }
 
+// FIXME: move this into its separate file, with proper initialization chain (first led, then the task)
+static void watch_coord_task(void *pvParameters) {
+    indicator_state state = IS_initial;
+
+    while (true) {
+        if (!esp_zb_is_started()) {
+            if (state != IS_initial) {
+                ESP_LOGI(TAG, "State: setting as initial");
+                state = IS_initial;
+                indicator_led_switch(IS_initial);
+            }
+        } else {
+            if (esp_zb_bdb_dev_joined()) {
+                esp_zb_nwk_info_iterator_t it = ESP_ZB_NWK_INFO_ITERATOR_INIT;
+                esp_zb_nwk_neighbor_info_t neighbor = {};
+                bool have_coord = false;
+                if(esp_zb_lock_acquire(portMAX_DELAY)) {
+                    while (ESP_OK == esp_zb_nwk_get_next_neighbor(&it, &neighbor)) {
+                        if (neighbor.device_type == ESP_ZB_DEVICE_TYPE_COORDINATOR) {
+                            // Normal coordinator. \o/
+                            have_coord = true;
+                            break;
+                        }
+                        if (neighbor.device_type == ESP_ZB_DEVICE_TYPE_ROUTER && neighbor.short_addr == 0x0001) {
+                            // FIXME: && neighbor.ieee_addr is philips range(?)
+                            // FIXME: the gotcha here is that in a Philips network, there might not be a coordinator at 0x0000 (?)
+                            have_coord = true;
+                            break;
+                        }
+                    }
+
+                    esp_zb_lock_release();
+                }
+
+                if (have_coord) {
+                    if (state != IS_connected) {
+                        ESP_LOGI(TAG, "State: Found coord: 0x%04hx, age: %d, lqi: %d, type: %d", neighbor.short_addr, neighbor.age, neighbor.lqi, neighbor.device_type);
+                        state = IS_connected;
+                        indicator_led_switch(IS_connected);
+                    }
+                } else {
+                    if (state != IS_connected_no_coord) {
+                        ESP_LOGI(TAG, "State: No coordinator present");
+                        state = IS_connected_no_coord;
+                        indicator_led_switch(IS_connected_no_coord);
+                    }
+                }
+
+            } else {
+                // FIXME: might not be completely right?
+                if (esp_zb_get_bdb_commissioning_status() != ESP_ZB_BDB_STATUS_SUCCESS) {
+                    if (state != IS_commissioning) {
+                        ESP_LOGI(TAG, "Status: Commissioning");
+                        state = IS_commissioning;
+                        indicator_led_switch(IS_commissioning);
+                    }
+                }
+            }
+        }
+
+        vTaskDelay(1000 / portTICK_PERIOD_MS);
+    }
+}
+
 void app_main(void)
 {
+    ESP_ERROR_CHECK(indicator_led_initialize());
+
     esp_zb_platform_config_t config = {
         .radio_config = ESP_ZB_DEFAULT_RADIO_CONFIG(),
         .host_config = ESP_ZB_DEFAULT_HOST_CONFIG(),
@@ -310,4 +366,5 @@ void app_main(void)
     ESP_ERROR_CHECK(light_config_initialize());
 
     xTaskCreate(esp_zb_task, "Zigbee_main", 4096, NULL, 5, NULL);
+    xTaskCreate(watch_coord_task, "watch_coord", 4096, NULL, 2, NULL);
 }
