@@ -16,7 +16,7 @@
 #include "delayed_save.h"
 #include "scenes.h"
 #include "light_driver.h"
-#include "indicator_led.h"
+#include "status_indicator.h"
 
 #if !defined CONFIG_ZB_ZCZR
 #error Define ZB_ZCZR in idf.py menuconfig to compile light (Router) source code.
@@ -287,73 +287,9 @@ static void esp_zb_task(void *pvParameters)
     esp_zb_stack_main_loop();
 }
 
-// FIXME: move this into its separate file, with proper initialization chain (first led, then the task)
-static void watch_coord_task(void *pvParameters) {
-    indicator_state state = IS_initial;
-
-    while (true) {
-        if (!esp_zb_is_started()) {
-            if (state != IS_initial) {
-                ESP_LOGI(TAG, "State: setting as initial");
-                state = IS_initial;
-                indicator_led_switch(IS_initial);
-            }
-        } else {
-            if (esp_zb_bdb_dev_joined()) {
-                esp_zb_nwk_info_iterator_t it = ESP_ZB_NWK_INFO_ITERATOR_INIT;
-                esp_zb_nwk_neighbor_info_t neighbor = {};
-                bool have_coord = false;
-                if(esp_zb_lock_acquire(portMAX_DELAY)) {
-                    while (ESP_OK == esp_zb_nwk_get_next_neighbor(&it, &neighbor)) {
-                        if (neighbor.device_type == ESP_ZB_DEVICE_TYPE_COORDINATOR) {
-                            // Normal coordinator. \o/
-                            have_coord = true;
-                            break;
-                        }
-                        if (neighbor.device_type == ESP_ZB_DEVICE_TYPE_ROUTER && neighbor.short_addr == 0x0001) {
-                            // FIXME: && neighbor.ieee_addr is philips range(?)
-                            // FIXME: the gotcha here is that in a Philips network, there might not be a coordinator at 0x0000 (?)
-                            have_coord = true;
-                            break;
-                        }
-                    }
-
-                    esp_zb_lock_release();
-                }
-
-                if (have_coord) {
-                    if (state != IS_connected) {
-                        ESP_LOGI(TAG, "State: Found coord: 0x%04hx, age: %d, lqi: %d, type: %d", neighbor.short_addr, neighbor.age, neighbor.lqi, neighbor.device_type);
-                        state = IS_connected;
-                        indicator_led_switch(IS_connected);
-                    }
-                } else {
-                    if (state != IS_connected_no_coord) {
-                        ESP_LOGI(TAG, "State: No coordinator present");
-                        state = IS_connected_no_coord;
-                        indicator_led_switch(IS_connected_no_coord);
-                    }
-                }
-
-            } else {
-                // FIXME: might not be completely right?
-                if (esp_zb_get_bdb_commissioning_status() != ESP_ZB_BDB_STATUS_SUCCESS) {
-                    if (state != IS_commissioning) {
-                        ESP_LOGI(TAG, "Status: Commissioning");
-                        state = IS_commissioning;
-                        indicator_led_switch(IS_commissioning);
-                    }
-                }
-            }
-        }
-
-        vTaskDelay(1000 / portTICK_PERIOD_MS);
-    }
-}
-
 void app_main(void)
 {
-    ESP_ERROR_CHECK(indicator_led_initialize());
+    ESP_ERROR_CHECK(status_indicator_initialize());
 
     esp_zb_platform_config_t config = {
         .radio_config = ESP_ZB_DEFAULT_RADIO_CONFIG(),
@@ -366,5 +302,4 @@ void app_main(void)
     ESP_ERROR_CHECK(light_config_initialize());
 
     xTaskCreate(esp_zb_task, "Zigbee_main", 4096, NULL, 5, NULL);
-    xTaskCreate(watch_coord_task, "watch_coord", 4096, NULL, 2, NULL);
 }
