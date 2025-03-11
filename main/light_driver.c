@@ -100,7 +100,7 @@ esp_err_t light_driver_initialize() {
     esp_err_t ret = ESP_OK;
 
     if (ld_initialized) {
-        ESP_LOGW(TAG, "Attempted to initialized light driver more than once");
+        ESP_LOGW(TAG, "Attempted to initialize light driver more than once");
     } else {
         gpio_config_t io_conf = {
             .intr_type = GPIO_INTR_DISABLE,
