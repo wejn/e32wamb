@@ -11,9 +11,9 @@
 #include "freertos/task.h"
 #include "esp_timer.h"
 
-#define SUSPEND_TICKS 250 // how many ms to wait until re-trying save
-#define SAVE_EVERY 5 * 1000 * 1000 // 5 seconds ± SUSPEND_TICKS, actually
-#define TRIGGERED_LAST_AT_LEAST 3 * 1000 * 1000 // 3 seconds ± SUSPEND_TICKS, actually
+#define SUSPEND_MS 250 // how many ms to wait until re-trying save
+#define SAVE_EVERY 5 * 1000 * 1000 // 5 seconds ± SUSPEND_MS, actually
+#define TRIGGERED_LAST_AT_LEAST 3 * 1000 * 1000 // 3 seconds ± SUSPEND_MS, actually
 
 static const char *TAG = "DELAYED_SAVE";
 static TaskHandle_t ds_task_handle;
@@ -74,7 +74,7 @@ static void delayed_save_task(void *pvParameters) {
             xTaskNotifyWait(0, 0, NULL, portMAX_DELAY);
         } else {
             // Not saved yet → wake up in a bit to try again
-            xTaskNotifyWait(0, 0, NULL, pdMS_TO_TICKS(SUSPEND_TICKS));
+            xTaskNotifyWait(0, 0, NULL, pdMS_TO_TICKS(SUSPEND_MS));
         }
     }
 }
