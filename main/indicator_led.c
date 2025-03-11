@@ -15,28 +15,36 @@ volatile static bool il_initialized = false;
 volatile static indicator_state il_state = IS_initial;
 static led_strip_handle_t il_led_strip;
 
+typedef struct {
+    bool valid;
+    uint8_t red;
+    uint8_t green;
+    uint8_t blue;
+    uint16_t delay;
+} indicator_frame;
+
 static void indicator_led_task(void *pvParameters) {
     float max_brightness = RGB_INDICATOR_MAX_BRIGHTNESS;
+#define MAX_FRAMES 2
+    indicator_frame frames[][MAX_FRAMES] = {
+        {{true, 255, 0, 0, 500}, {true, 64, 0, 0, 500}}, // IS_initial
+        {{true, 0, 0, 255, 500}, {true, 0, 0, 64, 500}}, // IS_commissioning
+        {{true, 64, 64, 0, 200}, {true, 0, 0, 0, 4800}}, // IS_connected_no_coord
+        {{true, 0, 64, 0, 20}, {true, 0, 0, 0, 4980}}, // IS_connected
+    };
+    uint8_t current_frame = MAX_FRAMES - 1;
+    indicator_frame *f = NULL;
     while (true) {
-        switch (il_state) {
-            case IS_initial:
-                led_strip_set_pixel(il_led_strip, 0, 255 * max_brightness, 0, 0);
-                break;
-            case IS_commissioning:
-                led_strip_set_pixel(il_led_strip, 0, 0, 0, 255 * max_brightness);
-                // FIXME: make this state a blink
-                break;
-            case IS_connected_no_coord:
-                led_strip_set_pixel(il_led_strip, 0, 255 * max_brightness, 255 * max_brightness, 0);
-                // FIXME: make this state a (short?) blink
-                break;
-            case IS_connected:
-                led_strip_set_pixel(il_led_strip, 0, 0, 255 * max_brightness, 0);
-                // FIXME: make default state a short blink
-                break;
+        f = frames[il_state];
+        if (current_frame + 1 > MAX_FRAMES - 1 || !f[current_frame + 1].valid) {
+            current_frame = 0;
+        } else {
+            current_frame++;
         }
+        f = &f[current_frame];
+        led_strip_set_pixel(il_led_strip, 0, f->red * max_brightness, f->green * max_brightness, f->blue * max_brightness);
         led_strip_refresh(il_led_strip);
-        xTaskNotifyWait(0, 0, NULL, portMAX_DELAY);
+        xTaskNotifyWait(0, 0, NULL, pdMS_TO_TICKS(f->delay));
     }
 }
 
