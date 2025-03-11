@@ -33,7 +33,7 @@
 }
 #endif
 
-static const char *TAG = "E32WAMB";
+static const char *TAG = "MAIN";
 
 static void bdb_start_top_level_commissioning_cb(uint8_t mode_mask)
 {
@@ -47,21 +47,20 @@ void esp_zb_app_signal_handler(esp_zb_app_signal_t *signal_struct)
     esp_zb_app_signal_type_t sig_type = *p_sg_p;
     switch (sig_type) {
     case ESP_ZB_ZDO_SIGNAL_SKIP_STARTUP:
-        ESP_LOGI(TAG, "Initialize Zigbee stack");
+        ESP_LOGI(TAG, "Initializing Zigbee stack");
         esp_zb_bdb_start_top_level_commissioning(ESP_ZB_BDB_MODE_INITIALIZATION);
         break;
     case ESP_ZB_BDB_SIGNAL_DEVICE_FIRST_START:
     case ESP_ZB_BDB_SIGNAL_DEVICE_REBOOT:
         if (err_status == ESP_OK) {
-            ESP_LOGI(TAG, "Device started up in %s factory-reset mode", esp_zb_bdb_is_factory_new() ? "" : "non");
             if (esp_zb_bdb_is_factory_new()) {
-                ESP_LOGI(TAG, "Start network steering");
+                ESP_LOGI(TAG, "Start commissioning (network steering)");
                 esp_zb_bdb_start_top_level_commissioning(ESP_ZB_BDB_MODE_NETWORK_STEERING);
             } else {
                 ESP_LOGI(TAG, "Device rebooted, joining network 0x%04hx as 0x%04hx", esp_zb_get_pan_id(), esp_zb_get_short_address());
             }
         } else {
-            ESP_LOGW(TAG, "Failed to initialize Zigbee stack (status: %s)", esp_err_to_name(err_status));
+            ESP_LOGW(TAG, "Failed to initialize Zigbee stack; status: %s", esp_err_to_name(err_status));
         }
         break;
     case ESP_ZB_BDB_SIGNAL_STEERING:
@@ -73,17 +72,16 @@ void esp_zb_app_signal_handler(esp_zb_app_signal_t *signal_struct)
                      extended_pan_id[3], extended_pan_id[2], extended_pan_id[1], extended_pan_id[0],
                      esp_zb_get_pan_id(), esp_zb_get_current_channel(), esp_zb_get_short_address());
         } else {
-            // FIXME: How about saying something like -- network not joined yet
-            ESP_LOGI(TAG, "Network steering was not successful (status: %s)", esp_err_to_name(err_status));
+            ESP_LOGI(TAG, "No network joined yet (status: %s)", esp_err_to_name(err_status));
             esp_zb_scheduler_alarm((esp_zb_callback_t)bdb_start_top_level_commissioning_cb, ESP_ZB_BDB_MODE_NETWORK_STEERING, 1000);
         }
         break;
     case ESP_ZB_NWK_SIGNAL_PERMIT_JOIN_STATUS:
         if (err_status == ESP_OK) {
             if (*(uint8_t *)esp_zb_app_signal_get_params(p_sg_p)) {
-                ESP_LOGI(TAG, "Network(0x%04hx) is open for %d seconds", esp_zb_get_pan_id(), *(uint8_t *)esp_zb_app_signal_get_params(p_sg_p));
+                ESP_LOGI(TAG, "Network 0x%04hx is open for %ds", esp_zb_get_pan_id(), *(uint8_t *)esp_zb_app_signal_get_params(p_sg_p));
             } else {
-                ESP_LOGW(TAG, "Network(0x%04hx) closed, devices joining not allowed.", esp_zb_get_pan_id());
+                ESP_LOGI(TAG, "Network 0x%04hx is closed, devices joining not allowed", esp_zb_get_pan_id());
             }
         }
         break;
@@ -104,30 +102,35 @@ void esp_zb_app_signal_handler(esp_zb_app_signal_t *signal_struct)
         }
         break;
     case ESP_ZB_NLME_STATUS_INDICATION:
-        esp_zb_zdo_signal_nwk_status_indication_params_t *ns = (esp_zb_zdo_signal_nwk_status_indication_params_t *) esp_zb_app_signal_get_params(p_sg_p);
-        ESP_LOGI(TAG, "Network status: 0x%x for address: 0x%04hx (uci: 0x%x)", ns->status, ns->network_addr, ns->unknown_command_id);
+        // esp_zb_zdo_signal_nwk_status_indication_params_t *ns = (esp_zb_zdo_signal_nwk_status_indication_params_t *) esp_zb_app_signal_get_params(p_sg_p);
+        // ESP_LOGI(TAG, "Network status: 0x%x for address: 0x%04hx (uci: 0x%x)", ns->status, ns->network_addr, ns->unknown_command_id);
         // Informative messages about given device on network; see https://docs.espressif.com/projects/esp-zigbee-sdk/en/latest/esp32/api-reference/nwk/esp_zigbee_nwk.html#_CPPv427esp_zb_nwk_command_status_t
+        // No-op.
         break;
     case ESP_ZB_NWK_SIGNAL_NO_ACTIVE_LINKS_LEFT:
         // This only means we're alone (no other nodes), but it can't be used to detect "offline" status;
         // i.e. a situation without coord, but with other routers/end devices present.
-        ESP_LOGI(TAG, "Do not have any peers.");
+        // No-op.
         break;
     case ESP_ZB_ZDO_SIGNAL_DEVICE_ANNCE:
-        esp_zb_zdo_signal_device_annce_params_t *da = (esp_zb_zdo_signal_device_annce_params_t *) esp_zb_app_signal_get_params(p_sg_p);
-        ESP_LOGI(TAG, "Device 0x%04hx with caps 0x%x (re-)joined network.", da->device_short_addr, da->capability);
+        // esp_zb_zdo_signal_device_annce_params_t *da = (esp_zb_zdo_signal_device_annce_params_t *) esp_zb_app_signal_get_params(p_sg_p);
+        // ESP_LOGI(TAG, "Device 0x%04hx with caps 0x%x (re-)joined network.", da->device_short_addr, da->capability);
+        // No-op. We don't need to know about newly joining devices.
+        break;
+    case ESP_ZB_ZDO_SIGNAL_PRODUCTION_CONFIG_READY:
+        // No-op. Loaded config (congrats!)
         break;
     default:
-        ESP_LOGI(TAG, "ZDO signal: %s (0x%x), status: %s", esp_zb_zdo_signal_to_string(sig_type), sig_type, esp_err_to_name(err_status));
+        ESP_LOGI(TAG, "Unhandled ZDO signal: %s (0x%x), status: %s", esp_zb_zdo_signal_to_string(sig_type), sig_type, esp_err_to_name(err_status));
         break;
     }
 }
 
 #define WARN_UNKNOWN(cluster) \
-    ESP_LOGW(TAG, "%s attr: unknown attribute(0x%x), type(0x%x), data size(%d)", cluster, message->attribute.id, message->attribute.data.type, message->attribute.data.size)
+    ESP_LOGW(TAG, "%s attr: unknown attribute: 0x%x, type: 0x%x, size: %d", cluster, message->attribute.id, message->attribute.data.type, message->attribute.data.size)
 #define IF_ATTR_IS_TYPE_AND_PRESENT(cluster, attr, attr_type) \
     if (message->attribute.data.type != attr_type) { \
-        ESP_LOGW(TAG, "%s: unexpected type for %s: expected %s, got type(0x%x) with size(%d)", cluster, attr, #attr_type, message->attribute.data.type, message->attribute.data.size); \
+        ESP_LOGW(TAG, "%s: unexpected type for %s: expected %s, got type: 0x%x with size: %d", cluster, attr, #attr_type, message->attribute.data.type, message->attribute.data.size); \
     } else if (! message->attribute.data.value) { \
         ESP_LOGW(TAG, "%s: unexpectedly no value for %s", cluster, attr); \
     } else
@@ -220,11 +223,11 @@ static esp_err_t color_attribute_handler(const esp_zb_zcl_set_attr_value_message
 static esp_err_t zb_attribute_handler(const esp_zb_zcl_set_attr_value_message_t *message)
 {
     ESP_RETURN_ON_FALSE(message, ESP_FAIL, TAG, "Empty message");
-    ESP_RETURN_ON_FALSE(message->info.status == ESP_ZB_ZCL_STATUS_SUCCESS, ESP_ERR_INVALID_ARG, TAG, "Received message: error status(%d)", message->info.status);
-    // ESP_LOGI(TAG, "Received message: endpoint(%d), cluster(0x%x), attribute(0x%x), data size(%d)", message->info.dst_endpoint, message->info.cluster, message->attribute.id, message->attribute.data.size);
+    ESP_RETURN_ON_FALSE(message->info.status == ESP_ZB_ZCL_STATUS_SUCCESS, ESP_ERR_INVALID_ARG, TAG, "Received message: error status: %d", message->info.status);
+    // ESP_LOGI(TAG, "Received message: endpoint: %d, cluster: 0x%x, attribute: 0x%x, size: %d", message->info.dst_endpoint, message->info.cluster, message->attribute.id, message->attribute.data.size);
 
     if (message->info.dst_endpoint != MY_LIGHT_ENDPOINT) {
-        ESP_LOGW(TAG, "Received message for unconfigured endpoint(%d): cluster(0x%x), attribute(0x%x), data size(%d)", message->info.dst_endpoint, message->info.cluster, message->attribute.id, message->attribute.data.size);
+        ESP_LOGW(TAG, "Received message for unconfigured endpoint; ep: %d, cluster: 0x%x, attribute: 0x%x, size: %d", message->info.dst_endpoint, message->info.cluster, message->attribute.id, message->attribute.data.size);
         return ESP_ERR_INVALID_ARG;
     }
 
@@ -237,7 +240,7 @@ static esp_err_t zb_attribute_handler(const esp_zb_zcl_set_attr_value_message_t 
         case ESP_ZB_ZCL_CLUSTER_ID_COLOR_CONTROL:
             return color_attribute_handler(message);
         default:
-            ESP_LOGW(TAG, "Unknown attribute: cluster(0x%x), attribute(0x%x)", message->info.cluster, message->attribute.id);
+            ESP_LOGW(TAG, "Unknown attribute: cluster: 0x%x, attribute: 0x%x", message->info.cluster, message->attribute.id);
     }
     return ESP_OK;
 }
@@ -255,9 +258,16 @@ static esp_err_t zb_action_handler(esp_zb_core_action_callback_id_t callback_id,
         case ESP_ZB_CORE_SCENES_RECALL_SCENE_CB_ID:
             ret = recall_scene((esp_zb_zcl_recall_scene_message_t*) message);
             break;
+        case ESP_ZB_CORE_CMD_DEFAULT_RESP_CB_ID:
+            // XXX: Hue Bridge on restart sometimes asks for onoff attribute
+            // value, and then responds to the reply with 0x82 (unsupported)
+            esp_zb_zcl_cmd_default_resp_message_t *cdr = (esp_zb_zcl_cmd_default_resp_message_t *) message;
+            esp_zb_zcl_cmd_info_t *i = &(cdr->info);
+            ESP_LOGW(TAG, "CMD default resp; cmd: 0x%x, status: 0x%x, info: [src: 0x%04hx, dst: 0x%04hx, se: %d, de: %d, cl: 0x%04hx, prof: 0x%04hx]", cdr->resp_to_cmd, cdr->status_code, i->src_address.u.short_addr, i->dst_address, i->src_endpoint, i->dst_endpoint, i->cluster, i->profile);
+            break;
         // FIXME: also triggering: ESP_ZB_CORE_IDENTIFY_EFFECT_CB_ID
         default:
-            ESP_LOGW(TAG, "Receive Zigbee action(0x%x) callback", callback_id);
+            ESP_LOGW(TAG, "Received unhandled action callback: 0x%x", callback_id);
             break;
     }
     return ret;
