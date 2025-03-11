@@ -20,10 +20,10 @@ static void indicator_led_task(void *pvParameters) {
     while (true) {
         switch (il_state) {
             case IS_initial:
-                led_strip_set_pixel(il_led_strip, 0, 255 * max_brightness, 255 * max_brightness, 255 * max_brightness);
+                led_strip_set_pixel(il_led_strip, 0, 255 * max_brightness, 0, 0);
                 break;
             case IS_commissioning:
-                led_strip_set_pixel(il_led_strip, 0, 255 * max_brightness, 0, 0);
+                led_strip_set_pixel(il_led_strip, 0, 0, 0, 255 * max_brightness);
                 // FIXME: make this state a blink
                 break;
             case IS_connected_no_coord:
