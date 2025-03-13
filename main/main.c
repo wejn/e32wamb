@@ -17,6 +17,7 @@
 #include "scenes.h"
 #include "light_driver.h"
 #include "status_indicator.h"
+#include "reset_button.h"
 
 #if !defined CONFIG_ZB_ZCZR
 #error Define ZB_ZCZR in idf.py menuconfig to compile light (Router) source code.
@@ -300,6 +301,7 @@ static void esp_zb_task(void *pvParameters)
 void app_main(void)
 {
     ESP_ERROR_CHECK(status_indicator_initialize());
+    ESP_ERROR_CHECK(reset_button_initialize());
 
     esp_zb_platform_config_t config = {
         .radio_config = ESP_ZB_DEFAULT_RADIO_CONFIG(),

@@ -20,6 +20,7 @@ typedef enum indicator_state {
 	IS_commissioning,
 	IS_connected_no_coord,
 	IS_connected,
+	IS_reset_pending,
 } indicator_state;
 
 // Initialize indicator LED
@@ -27,6 +28,12 @@ esp_err_t indicator_led_initialize();
 
 // Update indicator to given state
 esp_err_t indicator_led_switch(indicator_state state);
+
+// Lock indicator to given state
+esp_err_t indicator_led_lock(indicator_state state);
+
+// Unlock indicator to previous state
+esp_err_t indicator_led_unlock();
 
 #ifdef __cplusplus
 } // extern "C"

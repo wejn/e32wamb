@@ -66,6 +66,8 @@
     .couple_min_temperature = COLOR_MIN_TEMPERATURE, \
 }
 
+#define RESET_BUTTON_GPIO 9 // FIXME: you shall not use boot button for this
+
 #define RGB_INDICATOR_GPIO 8
 #define RGB_INDICATOR_MODEL LED_MODEL_WS2812
 #define RGB_INDICATOR_FORMAT LED_STRIP_COLOR_COMPONENT_FMT_RGB

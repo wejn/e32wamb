@@ -13,6 +13,8 @@ static const char *TAG = "INDICATOR_LED";
 static TaskHandle_t il_task_handle;
 volatile static bool il_initialized = false;
 volatile static indicator_state il_state = IS_initial;
+volatile static indicator_state il_state_before_lock = IS_initial;
+volatile bool il_locked = false;
 static led_strip_handle_t il_led_strip;
 
 typedef struct {
@@ -31,6 +33,7 @@ static void indicator_led_task(void *pvParameters) {
         {{true, 0, 0, 255, 500}, {true, 0, 0, 64, 500}}, // IS_commissioning
         {{true, 64, 64, 0, 200}, {true, 0, 0, 0, 4800}}, // IS_connected_no_coord
         {{true, 0, 64, 0, 20}, {true, 0, 0, 0, 4980}}, // IS_connected
+        {{true, 255, 255, 255, 100}, {true, 0, 0, 0, 100}}, // IS_reset_pending
     };
     uint8_t current_frame = MAX_FRAMES - 1;
     indicator_frame *f = NULL;
@@ -91,8 +94,49 @@ esp_err_t indicator_led_switch(indicator_state state) {
         ESP_LOGE(TAG, "Update triggered without initialization, skip");
         return ESP_ERR_NOT_SUPPORTED;
     } else {
-        il_state = state;
-        xTaskNotifyGive(il_task_handle);
+        if (il_locked) {
+            // nothing...
+        } else {
+            il_state = state;
+            xTaskNotifyGive(il_task_handle);
+        }
+    }
+
+    return ESP_OK;
+}
+
+esp_err_t indicator_led_lock(indicator_state state) {
+    if (!il_initialized) {
+        ESP_LOGE(TAG, "Lock triggered without initialization, skip");
+        return ESP_ERR_NOT_SUPPORTED;
+    } else {
+        if (il_locked) {
+            ESP_LOGE(TAG, "Can't lock more than once, skip");
+            return ESP_ERR_NOT_SUPPORTED;
+        } else {
+            il_locked = true;
+            il_state_before_lock = il_state;
+            il_state = state;
+            xTaskNotifyGive(il_task_handle);
+        }
+    }
+
+    return ESP_OK;
+}
+
+esp_err_t indicator_led_unlock() {
+    if (!il_initialized) {
+        ESP_LOGE(TAG, "Unlock triggered without initialization, skip");
+        return ESP_ERR_NOT_SUPPORTED;
+    } else {
+        if (!il_locked) {
+            ESP_LOGE(TAG, "Can't unlock what's not locked, skip");
+            return ESP_ERR_NOT_SUPPORTED;
+        } else {
+            il_state = il_state_before_lock;
+            il_locked = false;
+            xTaskNotifyGive(il_task_handle);
+        }
     }
 
     return ESP_OK;
