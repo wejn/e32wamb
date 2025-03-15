@@ -29,39 +29,36 @@ static double brightness_warm[256] = BRIGHTNESS_DATA_HOT;
 #define MAX_DUTY 8191 // 2**13 - 1
 
 static void light_driver_task(void *pvParameters) {
+    xTaskNotifyWait(0, 0, NULL, portMAX_DELAY); // block immediately ;)
     while (true) {
-        if (! ld_initialized) {
-            // no-op
+        if (! *light_config_initialized) {
+            ESP_LOGW(TAG, "The light_config not initialized yet, skip");
         } else {
-            if (! *light_config_initialized) {
-                ESP_LOGW(TAG, "The light_config not initialized yet, skip");
+            if (! light_config->onoff) {
+                // ESP_LOGI(TAG, "Set to off");
+                ledc_set_duty(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_0, 0);
+                ledc_set_duty(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_1, 0);
+                ledc_set_duty(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_2, 0);
+                ledc_set_duty(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_3, 0); // XXX: unused
+                ledc_set_duty(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_4, 0); // XXX: unused
             } else {
-                if (! light_config->onoff) {
-                    // ESP_LOGI(TAG, "Set to off");
-                    ledc_set_duty(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_0, 0);
-                    ledc_set_duty(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_1, 0);
-                    ledc_set_duty(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_2, 0);
-                    ledc_set_duty(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_3, 0); // XXX: unused
-                    ledc_set_duty(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_4, 0); // XXX: unused
-                } else {
-                    // FIXME: take light_config->level_options&2 into consideration!
-                    // FIXME: switching immediately to the new value is terribly jumpy fading into it is going to be better
-                    double normal = color_normal[light_config->temperature - COLOR_MIN_TEMPERATURE] * brightness_normal[light_config->level];
-                    double cold = color_cold[light_config->temperature - COLOR_MIN_TEMPERATURE] * brightness_cold[light_config->level];
-                    double warm = color_warm[light_config->temperature - COLOR_MIN_TEMPERATURE] * brightness_warm[light_config->level];
-                    // ESP_LOGI(TAG, "Set to %.04f, %.04f, %.04f", normal, cold, warm);
-                    ledc_set_duty(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_0, MAX_DUTY * normal);
-                    ledc_set_duty(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_1, MAX_DUTY * cold);
-                    ledc_set_duty(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_2, MAX_DUTY * warm);
-                    ledc_set_duty(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_3, 0); // XXX: unused
-                    ledc_set_duty(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_4, 0); // XXX: unused
-                }
-                ledc_update_duty(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_0);
-                ledc_update_duty(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_1);
-                ledc_update_duty(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_2);
-                ledc_update_duty(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_3);
-                ledc_update_duty(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_4);
+                // FIXME: take light_config->level_options&2 into consideration!
+                // FIXME: switching immediately to the new value is terribly jumpy fading into it is going to be better
+                double normal = color_normal[light_config->temperature - COLOR_MIN_TEMPERATURE] * brightness_normal[light_config->level];
+                double cold = color_cold[light_config->temperature - COLOR_MIN_TEMPERATURE] * brightness_cold[light_config->level];
+                double warm = color_warm[light_config->temperature - COLOR_MIN_TEMPERATURE] * brightness_warm[light_config->level];
+                // ESP_LOGI(TAG, "Set to %.04f, %.04f, %.04f", normal, cold, warm);
+                ledc_set_duty(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_0, MAX_DUTY * normal);
+                ledc_set_duty(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_1, MAX_DUTY * cold);
+                ledc_set_duty(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_2, MAX_DUTY * warm);
+                ledc_set_duty(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_3, 0); // XXX: unused
+                ledc_set_duty(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_4, 0); // XXX: unused
             }
+            ledc_update_duty(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_0);
+            ledc_update_duty(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_1);
+            ledc_update_duty(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_2);
+            ledc_update_duty(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_3);
+            ledc_update_duty(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_4);
         }
         xTaskNotifyWait(0, 0, NULL, portMAX_DELAY);
     }
@@ -137,8 +134,8 @@ esp_err_t light_driver_initialize() {
         CONFIG_CHAN(MY_LIGHT_PWM_CH4_GPIO, 4);
 
 
-        xTaskCreate(light_driver_task, "light_driver", 4096, NULL, 4, &ld_task_handle);
         ld_initialized = true;
+        xTaskCreate(light_driver_task, "light_driver", 4096, NULL, 4, &ld_task_handle);
         ESP_LOGI(TAG, "Initialized");
     }
 
