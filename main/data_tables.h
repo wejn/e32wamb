@@ -1,8 +1,9 @@
 /*
  * ESP32 White Ambiance
- * Written in 2025 by Michal Jirků (wejn)
  *
- * This code is licensed under AGPL version 3.
+ * This "code" is licensed under CC0, as it comes from dumping the Philips
+ * White Ambiance light PWM data:
+ * https://wejn.org/2024/12/hue-engine-dumping-the-data/
  *
  * Purpose: Color tables gathered by dumping the Hue White Ambiance.
  */

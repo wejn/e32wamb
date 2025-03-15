@@ -1,8 +1,8 @@
 /*
  * ESP32 White Ambiance
- * Written in 2025 by Michal Jirků (wejn)
+ * Copyright © 2025 Michal Jirků (wejn)
  *
- * This code is licensed under AGPL version 3.
+ * This code is licensed under GPL version 3.
  */
 #include "esp_check.h"
 #include "stdio.h"
