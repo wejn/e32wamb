@@ -38,6 +38,7 @@ static double brightness_warm[256] = BRIGHTNESS_DATA_HOT;
     ledc_fade_stop(MY_SPD_MODE, chan); \
     ledc_set_fade_time_and_start(MY_SPD_MODE, chan, duty, 100, LEDC_FADE_NO_WAIT); \
 } while(0)
+// FIXME: This sometimes triggers assert fail: https://github.com/espressif/esp-idf/issues/15580 (and IMO shouldn't)
 
 static void light_driver_task(void *pvParameters) {
     xTaskNotifyWait(0, 0, NULL, portMAX_DELAY); // block immediately ;)
@@ -46,6 +47,8 @@ static void light_driver_task(void *pvParameters) {
             ESP_LOGW(TAG, "The light_config not initialized yet, skip");
         } else {
             // FIXME: maybe also consider different fading durations?
+            // (because of OffWithEffect comes with 0.8s...)
+            // But that needs additional work: https://github.com/espressif/esp-zigbee-sdk/issues/596
             if (! light_config->onoff) {
                 // ESP_LOGI(TAG, "Set to off");
                 FADE(LEDC_CHANNEL_0, 0);
