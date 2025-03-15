@@ -26,7 +26,18 @@ static double brightness_normal[256] = BRIGHTNESS_DATA_NORMAL;
 static double brightness_cold[256] = BRIGHTNESS_DATA_COLD;
 static double brightness_warm[256] = BRIGHTNESS_DATA_HOT;
 
-#define MAX_DUTY 8191 // 2**13 - 1
+#define MY_SPD_MODE LEDC_LOW_SPEED_MODE
+#define MY_DUTY_RES LEDC_TIMER_13_BIT
+#define MAX_DUTY (1 << MY_DUTY_RES) - 1
+
+// As described on https://wejn.org/2025/03/testing-esp32-ledc-nonblocking-fading/
+// even the LEDC_FADE_NO_WAIT would block. So let's explicitly stop first,
+// then start new fade with 100ms. Why 100ms? Because that's spacing that
+// esp-zigbee-sdk uses for color changes.
+#define FADE(chan, duty) do { \
+    ledc_fade_stop(MY_SPD_MODE, chan); \
+    ledc_set_fade_time_and_start(MY_SPD_MODE, chan, duty, 100, LEDC_FADE_NO_WAIT); \
+} while(0)
 
 static void light_driver_task(void *pvParameters) {
     xTaskNotifyWait(0, 0, NULL, portMAX_DELAY); // block immediately ;)
@@ -34,31 +45,26 @@ static void light_driver_task(void *pvParameters) {
         if (! *light_config_initialized) {
             ESP_LOGW(TAG, "The light_config not initialized yet, skip");
         } else {
+            // FIXME: maybe also consider different fading durations?
             if (! light_config->onoff) {
                 // ESP_LOGI(TAG, "Set to off");
-                ledc_set_duty(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_0, 0);
-                ledc_set_duty(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_1, 0);
-                ledc_set_duty(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_2, 0);
-                ledc_set_duty(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_3, 0); // XXX: unused
-                ledc_set_duty(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_4, 0); // XXX: unused
+                FADE(LEDC_CHANNEL_0, 0);
+                FADE(LEDC_CHANNEL_1, 0);
+                FADE(LEDC_CHANNEL_2, 0);
+                FADE(LEDC_CHANNEL_3, 0); // XXX: unused
+                FADE(LEDC_CHANNEL_4, 0); // XXX: unused
             } else {
                 // FIXME: take light_config->level_options&2 into consideration!
-                // FIXME: switching immediately to the new value is terribly jumpy fading into it is going to be better
                 double normal = color_normal[light_config->temperature - COLOR_MIN_TEMPERATURE] * brightness_normal[light_config->level];
                 double cold = color_cold[light_config->temperature - COLOR_MIN_TEMPERATURE] * brightness_cold[light_config->level];
                 double warm = color_warm[light_config->temperature - COLOR_MIN_TEMPERATURE] * brightness_warm[light_config->level];
                 // ESP_LOGI(TAG, "Set to %.04f, %.04f, %.04f", normal, cold, warm);
-                ledc_set_duty(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_0, MAX_DUTY * normal);
-                ledc_set_duty(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_1, MAX_DUTY * cold);
-                ledc_set_duty(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_2, MAX_DUTY * warm);
-                ledc_set_duty(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_3, 0); // XXX: unused
-                ledc_set_duty(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_4, 0); // XXX: unused
+                FADE(LEDC_CHANNEL_0, MAX_DUTY * normal);
+                FADE(LEDC_CHANNEL_1, MAX_DUTY * cold);
+                FADE(LEDC_CHANNEL_2, MAX_DUTY * warm);
+                FADE(LEDC_CHANNEL_3, 0); // XXX: unused
+                FADE(LEDC_CHANNEL_4, 0); // XXX: unused
             }
-            ledc_update_duty(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_0);
-            ledc_update_duty(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_1);
-            ledc_update_duty(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_2);
-            ledc_update_duty(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_3);
-            ledc_update_duty(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_4);
         }
         xTaskNotifyWait(0, 0, NULL, portMAX_DELAY);
     }
@@ -77,7 +83,7 @@ esp_err_t light_driver_update() {
 
 #define CONFIG_CHAN(PIN, NUM) do { \
         ledc_channel_config_t chan_##NUM = { \
-            .speed_mode = LEDC_LOW_SPEED_MODE, \
+            .speed_mode = MY_SPD_MODE, \
             .channel = LEDC_CHANNEL_##NUM, \
             .timer_sel = timer, \
             .intr_type = LEDC_INTR_DISABLE, /* .intr_type: rethink if you want fading; esp-idf/examples/peripherals/ledc/ledc_fade/main/ledc_fade_example_main.c */ \
@@ -115,9 +121,9 @@ esp_err_t light_driver_initialize() {
         ledc_timer_t timer = LEDC_TIMER_0;
 
         ledc_timer_config_t ledc_timer = {
-            .speed_mode = LEDC_LOW_SPEED_MODE,
+            .speed_mode = MY_SPD_MODE,
             .timer_num = timer,
-            .duty_resolution = LEDC_TIMER_13_BIT,
+            .duty_resolution = MY_DUTY_RES,
             .freq_hz = 5000, // FIXME: Maybe 1k like Hue?
             .clk_cfg = LEDC_AUTO_CLK,
         };
@@ -127,12 +133,17 @@ esp_err_t light_driver_initialize() {
             return ret;
         }
 
+        ret = ledc_fade_func_install(ESP_INTR_FLAG_LEVEL3); // higher prio -> buttery smooth?
+        if (ret != ESP_OK) {
+            ESP_LOGE(TAG, "can't install fade func: %s, abort", esp_err_to_name(ret));
+            return ret;
+        }
+
         CONFIG_CHAN(MY_LIGHT_PWM_CH0_GPIO, 0);
         CONFIG_CHAN(MY_LIGHT_PWM_CH1_GPIO, 1);
         CONFIG_CHAN(MY_LIGHT_PWM_CH2_GPIO, 2);
         CONFIG_CHAN(MY_LIGHT_PWM_CH3_GPIO, 3);
         CONFIG_CHAN(MY_LIGHT_PWM_CH4_GPIO, 4);
-
 
         ld_initialized = true;
         xTaskCreate(light_driver_task, "light_driver", 4096, NULL, 4, &ld_task_handle);
