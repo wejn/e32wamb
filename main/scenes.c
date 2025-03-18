@@ -73,7 +73,6 @@ esp_err_t recall_scene(esp_zb_zcl_recall_scene_message_t *msg) {
                         ESP_ZB_ZCL_ATTR_ON_OFF_ON_OFF_ID,
                         f->extension_field_attribute_value_list,
                         false);
-                trigger_delayed_save(DS_onoff);
                 break;
             case ESP_ZB_ZCL_CLUSTER_ID_LEVEL_CONTROL:
                 light_config_update(LCFV_level, *(uint8_t*) f->extension_field_attribute_value_list);
@@ -84,7 +83,6 @@ esp_err_t recall_scene(esp_zb_zcl_recall_scene_message_t *msg) {
                         ESP_ZB_ZCL_ATTR_LEVEL_CONTROL_CURRENT_LEVEL_ID,
                         f->extension_field_attribute_value_list,
                         false);
-                trigger_delayed_save(DS_level);
                 break;
             case ESP_ZB_ZCL_CLUSTER_ID_COLOR_CONTROL:
                 light_config_update(LCFV_temperature, *(uint16_t*) f->extension_field_attribute_value_list);
@@ -95,7 +93,6 @@ esp_err_t recall_scene(esp_zb_zcl_recall_scene_message_t *msg) {
                         ESP_ZB_ZCL_ATTR_COLOR_CONTROL_COLOR_TEMPERATURE_ID,
                         f->extension_field_attribute_value_list,
                         false);
-                trigger_delayed_save(DS_temperature);
                 break;
             default:
                 ESP_LOGW(TAG, "Unknown field(s) to recall for endpoint %d, cluster %d", msg->info.dst_endpoint, f->cluster_id);
