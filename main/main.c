@@ -279,22 +279,31 @@ static esp_err_t zb_action_handler(esp_zb_core_action_callback_id_t callback_id,
     return ret;
 }
 
+typedef ZB_PACKED_PRE struct my_off_with_effect_cmd_req_s
+{
+  zb_uint8_t effect_id; // Effect identifier
+  zb_uint8_t effect_variant; // Effect variant
+} ZB_PACKED_STRUCT
+my_off_with_effect_cmd_req_t;
+
 bool zb_raw_command_handler(uint8_t bufid) {
     // Hello https://github.com/espressif/esp-zigbee-sdk/issues/597
 
-    // uint8_t buf[zb_buf_len(bufid)];
+    uint8_t buf[zb_buf_len(bufid)];
     zb_zcl_parsed_hdr_t *cmd_info = ZB_BUF_GET_PARAM(bufid, zb_zcl_parsed_hdr_t);
-    // memcpy(buf, zb_buf_begin(bufid), sizeof(buf));
+    memcpy(buf, zb_buf_begin(bufid), sizeof(buf));
 
-    if (cmd_info->addr_data.common_data.dst_endpoint == MY_LIGHT_ENDPOINT && cmd_info->cmd_id == ZB_ZCL_CMD_READ_ATTRIB) {
-        /*
-           zb_zcl_read_attr_req_t *ra_req = (zb_zcl_read_attr_req_t *)buf;
-           ESP_LOGI("READ_ATTR", "From: 0x%04x, Endpoint: 0x%d, ClusterID: 0x%04x, AttrID: 0x%04x",
-           cmd_info->addr_data.common_data.source.u.short_addr,
-           cmd_info->addr_data.common_data.dst_endpoint,
-           cmd_info->cluster_id,
-         *ra_req->attr_id); */
-        light_endpoint_last_queried_time = esp_timer_get_time();
+    if (cmd_info->addr_data.common_data.dst_endpoint == MY_LIGHT_ENDPOINT) {
+        if (cmd_info->cmd_id == ZB_ZCL_CMD_READ_ATTRIB) {
+            light_endpoint_last_queried_time = esp_timer_get_time();
+        }
+
+        if (cmd_info->cluster_id == ESP_ZB_ZCL_CLUSTER_ID_ON_OFF &&
+                cmd_info->cmd_id == ESP_ZB_ZCL_CMD_ON_OFF_OFF_WITH_EFFECT_ID) {
+               my_off_with_effect_cmd_req_t *req = (my_off_with_effect_cmd_req_t *)buf;
+               ESP_LOGI(TAG, "O.w.E. detected: effect: 0x%02x, variant: 0x%02x", req->effect_id, req->effect_variant);
+               // FIXME: Make use of this
+        }
     }
 
     return false;
