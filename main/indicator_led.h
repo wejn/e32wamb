@@ -16,11 +16,11 @@ extern "C" {
 #include "esp_err.h"
 
 typedef enum indicator_state {
-	IS_initial,
-	IS_commissioning,
-	IS_connected_no_coord,
-	IS_connected,
-	IS_reset_pending,
+	IS_initial, // Initial state
+	IS_commissioning, // Commissioning state (not connected yet)
+	IS_connected_no_coord, // Connected to network, but nobody is querying us & no coordinator
+	IS_connected, // Fully connected
+	IS_reset_pending, // Reset button held (so we'll be resetting soon)
 } indicator_state;
 
 // Initialize indicator LED

@@ -8,8 +8,11 @@
 #include "esp_zigbee_core.h"
 #include "indicator_led.h"
 #include "status_indicator.h"
+#include "esp_timer.h"
+#include "main.h"
 
 #define INDICATOR_REFRESH_MS 1000
+#define QUERYING_TIMEOUT 30 * 1000 * 1000 // s in μs
 
 static const char *TAG = "STATUS_INDICATOR";
 
@@ -30,16 +33,18 @@ static void status_indicator_task(void *pvParameters) {
                 esp_zb_nwk_info_iterator_t it = ESP_ZB_NWK_INFO_ITERATOR_INIT;
                 esp_zb_nwk_neighbor_info_t neighbor = {};
                 bool have_coord = false;
-                if(esp_zb_lock_acquire(portMAX_DELAY)) {
+                bool have_reader = false;
+
+                // If there were recent queries on the light endpoint, we're not alone...
+                if ((esp_timer_get_time() - light_endpoint_last_queried_time) < QUERYING_TIMEOUT) {
+                    have_reader = true;
+                }
+
+                // If no reader (by queries), then check neighbor table...
+                if(!have_reader && esp_zb_lock_acquire(portMAX_DELAY)) {
                     while (ESP_OK == esp_zb_nwk_get_next_neighbor(&it, &neighbor)) {
                         if (neighbor.device_type == ESP_ZB_DEVICE_TYPE_COORDINATOR) {
                             // Normal coordinator. \o/
-                            have_coord = true;
-                            break;
-                        }
-                        if (neighbor.device_type == ESP_ZB_DEVICE_TYPE_ROUTER && neighbor.short_addr == 0x0001) {
-                            // FIXME: && neighbor.ieee_addr is philips range(?)
-                            // FIXME: the gotcha here is that in a Philips network, there might not be a coordinator at 0x0000 (?)
                             have_coord = true;
                             break;
                         }
@@ -48,15 +53,20 @@ static void status_indicator_task(void *pvParameters) {
                     esp_zb_lock_release();
                 }
 
-                if (have_coord) {
+                if (have_coord || have_reader) {
                     if (state != IS_connected) {
-                        ESP_LOGI(TAG, "found coordinator: 0x%04hx, age: %d, lqi: %d, type: %d", neighbor.short_addr, neighbor.age, neighbor.lqi, neighbor.device_type);
+                        if (have_reader) {
+                            ESP_LOGI(TAG, "was recently queried -- assuming online");
+                        }
+                        if (have_coord) {
+                            ESP_LOGI(TAG, "online: found coordinator: 0x%04hx, age: %d, lqi: %d, type: %d", neighbor.short_addr, neighbor.age, neighbor.lqi, neighbor.device_type);
+                        }
                         state = IS_connected;
                         indicator_led_switch(IS_connected);
                     }
                 } else {
                     if (state != IS_connected_no_coord) {
-                        ESP_LOGI(TAG, "no coordinator present");
+                        ESP_LOGI(TAG, "connected but offline: no coordinator present, and no recent queries");
                         state = IS_connected_no_coord;
                         indicator_led_switch(IS_connected_no_coord);
                     }

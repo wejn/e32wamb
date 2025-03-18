@@ -11,4 +11,6 @@
 
 #include "global_config.h"
 
-// Not much here otherwise ;)
+// When was the last time our light endpoint was last queried.
+// Records timestamp from esp_timer_get_time(), initially zero.
+extern uint64_t light_endpoint_last_queried_time;

@@ -18,6 +18,8 @@
 #include "light_driver.h"
 #include "status_indicator.h"
 #include "reset_button.h"
+#include "zboss_api.h"
+#include "esp_timer.h"
 
 #if !defined CONFIG_ZB_ZCZR
 #error Define ZB_ZCZR in idf.py menuconfig to compile light (Router) source code.
@@ -33,6 +35,8 @@
     0x88, 0x99, 0xAA, 0xBB, 0xCC, 0xDD, 0xEE, 0xFF \
 }
 #endif
+
+uint64_t light_endpoint_last_queried_time = 0;
 
 static const char *TAG = "MAIN";
 
@@ -201,7 +205,7 @@ static esp_err_t color_attribute_handler(const esp_zb_zcl_set_attr_value_message
             IF_ATTR_IS_TYPE_AND_PRESENT("color", "temperature", ESP_ZB_ZCL_ATTR_TYPE_U16) {
                 light_config_update(LCFV_temperature, *(uint16_t *)message->attribute.data.value);
                 ESP_LOGI(TAG, "Light temperature change to %u", light_config->temperature);
-            } 
+            }
             break;
         case ESP_ZB_ZCL_ATTR_COLOR_CONTROL_OPTIONS_ID: // map8
             IF_ATTR_IS_TYPE_AND_PRESENT("color", "options", ESP_ZB_ZCL_ATTR_TYPE_8BITMAP) {
@@ -265,6 +269,7 @@ static esp_err_t zb_action_handler(esp_zb_core_action_callback_id_t callback_id,
             esp_zb_zcl_cmd_default_resp_message_t *cdr = (esp_zb_zcl_cmd_default_resp_message_t *) message;
             esp_zb_zcl_cmd_info_t *i = &(cdr->info);
             ESP_LOGW(TAG, "CMD default resp; cmd: 0x%x, status: 0x%x, info: [src: 0x%04hx, dst: 0x%04hx, se: %d, de: %d, cl: 0x%04hx, prof: 0x%04hx]", cdr->resp_to_cmd, cdr->status_code, i->src_address.u.short_addr, i->dst_address, i->src_endpoint, i->dst_endpoint, i->cluster, i->profile);
+            // XXX: ^^ this will show bullshit src address IF not a short one.
             break;
         // FIXME: also triggering: ESP_ZB_CORE_IDENTIFY_EFFECT_CB_ID
         default:
@@ -272,6 +277,27 @@ static esp_err_t zb_action_handler(esp_zb_core_action_callback_id_t callback_id,
             break;
     }
     return ret;
+}
+
+bool zb_raw_command_handler(uint8_t bufid) {
+    // Hello https://github.com/espressif/esp-zigbee-sdk/issues/597
+
+    // uint8_t buf[zb_buf_len(bufid)];
+    zb_zcl_parsed_hdr_t *cmd_info = ZB_BUF_GET_PARAM(bufid, zb_zcl_parsed_hdr_t);
+    // memcpy(buf, zb_buf_begin(bufid), sizeof(buf));
+
+    if (cmd_info->addr_data.common_data.dst_endpoint == MY_LIGHT_ENDPOINT && cmd_info->cmd_id == ZB_ZCL_CMD_READ_ATTRIB) {
+        /*
+           zb_zcl_read_attr_req_t *ra_req = (zb_zcl_read_attr_req_t *)buf;
+           ESP_LOGI("READ_ATTR", "From: 0x%04x, Endpoint: 0x%d, ClusterID: 0x%04x, AttrID: 0x%04x",
+           cmd_info->addr_data.common_data.source.u.short_addr,
+           cmd_info->addr_data.common_data.dst_endpoint,
+           cmd_info->cluster_id,
+         *ra_req->attr_id); */
+        light_endpoint_last_queried_time = esp_timer_get_time();
+    }
+
+    return false;
 }
 
 static void esp_zb_task(void *pvParameters)
@@ -293,6 +319,7 @@ static void esp_zb_task(void *pvParameters)
 
     esp_zb_device_register(light_ep);
     esp_zb_core_action_handler_register(zb_action_handler);
+    esp_zb_raw_command_handler_register(zb_raw_command_handler);
     esp_zb_set_primary_network_channel_set(ESP_ZB_TRANSCEIVER_ALL_CHANNELS_MASK);
     ESP_ERROR_CHECK(esp_zb_start(false));
     esp_zb_stack_main_loop();
