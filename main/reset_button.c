@@ -15,7 +15,7 @@
 #include "light_config.h"
 
 #define DEBOUNCE_DELAY_US 50 * 1000 // ms in μs
-#define LONG_PRESS_DELAY_US 5 * 1000 * 1000 // ms in μs
+#define LONG_PRESS_DELAY_US 5 * 1000 * 1000 // s in μs
 #define SUSPEND_MS 250
 
 static const char *TAG = "RESET_BUTTON";
