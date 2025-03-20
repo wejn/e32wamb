@@ -57,10 +57,19 @@ static void light_driver_task(void *pvParameters) {
                 FADE(LEDC_CHANNEL_3, 0); // XXX: unused
                 FADE(LEDC_CHANNEL_4, 0); // XXX: unused
             } else {
-                // FIXME: take light_config->level_options&2 into consideration!
-                double normal = color_normal[light_config->temperature - COLOR_MIN_TEMPERATURE] * brightness_normal[light_config->level];
-                double cold = color_cold[light_config->temperature - COLOR_MIN_TEMPERATURE] * brightness_cold[light_config->level];
-                double warm = color_warm[light_config->temperature - COLOR_MIN_TEMPERATURE] * brightness_warm[light_config->level];
+                uint8_t new_level = light_config->level;
+                uint16_t new_temp = light_config->temperature;
+                if (light_config->level_options&2) {
+#define MAX_LEVEL 254
+#define MIN_LEVEL 1
+                    uint16_t min_temp = light_config->couple_min_temperature;
+                    uint16_t max_temp = new_temp;
+                    // My reading of ZCLv8 is that when coupled, it is:
+                    new_temp = max_temp - ((new_level - MIN_LEVEL) * (max_temp - min_temp)) / (MAX_LEVEL - MIN_LEVEL);
+                }
+                double normal = color_normal[new_temp - COLOR_MIN_TEMPERATURE] * brightness_normal[new_level];
+                double cold = color_cold[new_temp - COLOR_MIN_TEMPERATURE] * brightness_cold[new_level];
+                double warm = color_warm[new_temp - COLOR_MIN_TEMPERATURE] * brightness_warm[new_level];
                 // ESP_LOGI(TAG, "Set to %.04f, %.04f, %.04f", normal, cold, warm);
                 FADE(LEDC_CHANNEL_0, MAX_DUTY * normal);
                 FADE(LEDC_CHANNEL_1, MAX_DUTY * cold);
