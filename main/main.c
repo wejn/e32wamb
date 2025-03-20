@@ -295,6 +295,12 @@ bool zb_raw_command_handler(uint8_t bufid) {
 
     if (cmd_info->addr_data.common_data.dst_endpoint == MY_LIGHT_ENDPOINT) {
         if (cmd_info->cmd_id == ZB_ZCL_CMD_READ_ATTRIB) {
+          /*
+          zb_zcl_read_attr_req_t *req = (zb_zcl_read_attr_req_t *)buf;
+          ESP_LOGI(TAG, "QRY: Endpoint: 0x%d, ClusterID: 0x%04x, AttrID: 0x%02x",
+              cmd_info->addr_data.common_data.dst_endpoint,
+              cmd_info->cluster_id,
+              *req->attr_id); */
             light_endpoint_last_queried_time = esp_timer_get_time();
         }
 

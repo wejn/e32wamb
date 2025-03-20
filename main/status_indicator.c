@@ -36,7 +36,8 @@ static void status_indicator_task(void *pvParameters) {
                 bool have_reader = false;
 
                 // If there were recent queries on the light endpoint, we're not alone...
-                if ((esp_timer_get_time() - light_endpoint_last_queried_time) < QUERYING_TIMEOUT) {
+                if (light_endpoint_last_queried_time &&
+                        (esp_timer_get_time() - light_endpoint_last_queried_time) < QUERYING_TIMEOUT) {
                     have_reader = true;
                 }
 
