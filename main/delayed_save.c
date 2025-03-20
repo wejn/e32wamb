@@ -98,6 +98,7 @@ void trigger_delayed_save(delayed_save_type type) {
             break;
         default:
             ESP_LOGW(TAG, "Delayed save for unknown type: %d", type);
+            taskEXIT_CRITICAL(&my_spinlock);
             return;
     }
 
