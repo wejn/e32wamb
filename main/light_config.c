@@ -399,8 +399,12 @@ esp_err_t light_config_update(lc_flash_var_t key, uint32_t val) {
             light_config_persist_var(LCFV_startup_onoff);
             break;
         case LCFV_level_options:
+            uint32_t oldval = light_config_rw.level_options;
             light_config_rw.level_options = val;
             light_config_persist_var(LCFV_level_options);
+            if ((oldval & 2) != (val & 2)) { // has "Couple changes to level with Color temp" changed?
+                ret = light_driver_update();
+            }
             break;
         case LCFV_level:
             light_config_rw.level = val;
