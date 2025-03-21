@@ -1,7 +1,7 @@
 # Hue White Ambiance replacement using ESP32
 
-**Note: This is work in progress, not guaranteed to be usable in any way.
-If you want working (but minimal) example, see
+**Note: This is work in progress, not guaranteed to be fully usable.
+If you want a minimal example, see
 [esp32-huello-world](https://github.com/wejn/esp32-huello-world) repo.**
 
 This will be a firmware for my Hue White Ambiance replacement driver
