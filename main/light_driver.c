@@ -13,6 +13,7 @@
 #include "driver/gpio.h"
 #include "driver/ledc.h"
 #include "data_tables.h"
+#include "esp_timer.h"
 
 static const char *TAG = "LIGHT_DRIVER";
 static TaskHandle_t ld_task_handle;
@@ -90,7 +91,8 @@ static void fade_to(bool onoff, uint8_t level, uint16_t temperature, uint16_t ti
         double normal = color_normal[new_temp - COLOR_MIN_TEMPERATURE] * brightness_normal[new_level];
         double cold = color_cold[new_temp - COLOR_MIN_TEMPERATURE] * brightness_cold[new_level];
         double warm = color_warm[new_temp - COLOR_MIN_TEMPERATURE] * brightness_warm[new_level];
-        ESP_LOGI(TAG, "Set to %.04f, %.04f, %.04f (o/l/t: %d, %d, %d, t: %u)", normal, cold, warm, onoff, new_level, new_temp, time);
+        ESP_LOGI(TAG, "Set to %.04f, %.04f, %.04f (o/l/t: [%d, %d, %d], t: %u)",
+                normal, cold, warm, onoff, new_level, new_temp, time);
         FADE(LEDC_CHANNEL_0, MAX_DUTY * normal, time);
         FADE(LEDC_CHANNEL_1, MAX_DUTY * cold, time);
         FADE(LEDC_CHANNEL_2, MAX_DUTY * warm, time);
@@ -143,7 +145,7 @@ static effect_frame Effect_Breathe[] = {
 static effect_frame Effect_ChannelChange[] = {
     {true, false, &on, &max_level, NULL, 500},
     {true, false, &on, &min_level, NULL, 500},
-    {true, true, &on, &min_level, NULL, 7000}, // XXX: this will not fly
+    {true, true, &on, &min_level, NULL, 7000},
     LAST_FRAME,
 };
 
@@ -169,6 +171,13 @@ static effect_frame Effect_DyingLight0[] = {
     want_effect = LD_Effect_None; \
 } while (0)
 
+#define RESET_EFFECTS() do { \
+    current_effect = NULL; \
+    abort_effect = false; \
+    frame_start = 0; \
+    frame_duration = 0; \
+} while (0)
+
 static void light_driver_task(void *pvParameters) {
     bool updated = false;
     effect_frame *current_effect = NULL;
@@ -176,6 +185,8 @@ static void light_driver_task(void *pvParameters) {
     uint8_t reps = 1;
     bool abort_effect = false;
     ld_effect_type want_effect = LD_Effect_None;
+    uint64_t frame_start = 0;
+    int16_t frame_duration = 0;
 
     xTaskNotifyWait(0, 0, NULL, portMAX_DELAY); // block immediately ;)
     while (true) {
@@ -199,9 +210,19 @@ static void light_driver_task(void *pvParameters) {
                     } else { // fade ended, get new frame or update
                         ESP_LOGD(TAG, "No fade active...");
                         if (current_effect) {
+                            if (frame_start > 0) {
+                                uint16_t sofar = (esp_timer_get_time() - frame_start) / 1000;
+                                if (sofar < frame_duration - 10) { // 10 because who cares about 10ms
+                                    ESP_LOGD(TAG, "Waiting %u-ms to fill up the wait time...", frame_duration - sofar);
+                                    xTaskNotifyWait(0, 0, NULL, pdMS_TO_TICKS(frame_duration - sofar));
+                                    continue;
+                                }
+                            }
                             ESP_LOGD(TAG, "We have effect to run...");
                             if (current_effect[frame_no].valid) {
                                 ESP_LOGD(TAG, "Starting frame %d, reps: %d, time: %d...", frame_no, reps, current_effect[frame_no].time);
+                                frame_start = esp_timer_get_time();
+                                frame_duration = current_effect[frame_no].time;
                                 fade_to(
                                         current_effect[frame_no].onoff ? *current_effect[frame_no].onoff : light_config->onoff,
                                         current_effect[frame_no].level ? *current_effect[frame_no].level : light_config->level,
@@ -209,8 +230,7 @@ static void light_driver_task(void *pvParameters) {
                                         current_effect[frame_no].time);
                                 if (abort_effect && current_effect[frame_no].abortable) {
                                     ESP_LOGD(TAG, "Aborting now.");
-                                    current_effect = NULL;
-                                    abort_effect = false;
+                                    RESET_EFFECTS();
                                 } else {
                                     frame_no++;
                                 }
@@ -223,8 +243,7 @@ static void light_driver_task(void *pvParameters) {
                                     continue; // do it again, Sam
                                 } else { // no more reps → end of animation
                                     ESP_LOGD(TAG, "End of animation...");
-                                    current_effect = NULL;
-                                    abort_effect = false;
+                                    RESET_EFFECTS();
                                     fade_to(light_config->onoff, light_config->level, light_config->temperature, 100);
                                 }
                             }
@@ -250,7 +269,7 @@ static void light_driver_task(void *pvParameters) {
                     ACTIVATE_EFFECT(2, light_config->onoff ? Effect_Blink_FromOn : Effect_Blink_FromOff);
                     continue;
                 case LD_Effect_ChannelChange: // identify: max brightness 0.5s, then min brightness for 7.5s
-                    ACTIVATE_EFFECT(2, Effect_ChannelChange);
+                    ACTIVATE_EFFECT(1, Effect_ChannelChange);
                     continue;
                 case LD_Effect_Finish:
                     ESP_LOGD(TAG, "Triggering effect finish");
@@ -259,23 +278,20 @@ static void light_driver_task(void *pvParameters) {
                     break;
                 case LD_Effect_Stop:
                     ESP_LOGD(TAG, "Triggering effect stop");
-                    current_effect = NULL;
-                    abort_effect = false;
+                    RESET_EFFECTS();
                     stop_fading(); // we might be in the middle of one; don't wait
                     fade_to(light_config->onoff, light_config->level, light_config->temperature, 100);
                     want_effect = LD_Effect_None; // clear it (processed)
                     break;
                 case LD_Effect_DelayedOff0: // fade to off in 0.8s
                     ESP_LOGD(TAG, "Triggering effect DelayedOff0");
-                    current_effect = NULL;
-                    abort_effect = false;
+                    RESET_EFFECTS();
                     fade_to(false, light_config->level, light_config->temperature, 800);
                     want_effect = LD_Effect_None; // clear it (processed)
                     break;
                 case LD_Effect_DelayedOff1: // no fade (??)
                     ESP_LOGD(TAG, "Triggering effect DelayedOff1");
-                    current_effect = NULL;
-                    abort_effect = false;
+                    RESET_EFFECTS();
                     fade_to(false, light_config->level, light_config->temperature, 1);
                     want_effect = LD_Effect_None; // clear it (processed)
                     break;
