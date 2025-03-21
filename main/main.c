@@ -140,13 +140,21 @@ void esp_zb_app_signal_handler(esp_zb_app_signal_t *signal_struct)
         ESP_LOGW(TAG, "%s: unexpectedly no value for %s", cluster, attr); \
     } else
 
+static ld_effect_type owe_effect = LD_Effect_None;
 
 static esp_err_t onoff_attribute_handler(const esp_zb_zcl_set_attr_value_message_t *message) {
     switch (message->attribute.id) {
         case ESP_ZB_ZCL_ATTR_ON_OFF_ON_OFF_ID:
             IF_ATTR_IS_TYPE_AND_PRESENT("onoff", "onoff", ESP_ZB_ZCL_ATTR_TYPE_BOOL) {
-                light_config_update(LCFV_onoff, *(bool *)message->attribute.data.value);
-                ESP_LOGI(TAG, "Light turns %s", light_config->onoff ? "on" : "off");
+                bool onoff = *(bool *)message->attribute.data.value;
+                if (!onoff && owe_effect != LD_Effect_None) {
+                  light_config_update_with_effect(LCFV_onoff, onoff, owe_effect);
+                  ESP_LOGI(TAG, "Light turns off (with effect: %d)", owe_effect);
+                  owe_effect = LD_Effect_None;
+                } else {
+                  light_config_update(LCFV_onoff, onoff);
+                  ESP_LOGI(TAG, "Light turns %s", onoff ? "on" : "off");
+                }
             }
             break;
         case ESP_ZB_ZCL_ATTR_ON_OFF_ON_TIME: // uint16
@@ -271,7 +279,34 @@ static esp_err_t zb_action_handler(esp_zb_core_action_callback_id_t callback_id,
             ESP_LOGW(TAG, "CMD default resp; cmd: 0x%x, status: 0x%x, info: [src: 0x%04hx, dst: 0x%04hx, se: %d, de: %d, cl: 0x%04hx, prof: 0x%04hx]", cdr->resp_to_cmd, cdr->status_code, i->src_address.u.short_addr, i->dst_address, i->src_endpoint, i->dst_endpoint, i->cluster, i->profile);
             // XXX: ^^ this will show bullshit src address IF not a short one.
             break;
-        // FIXME: also triggering: ESP_ZB_CORE_IDENTIFY_EFFECT_CB_ID
+        case ESP_ZB_CORE_IDENTIFY_EFFECT_CB_ID:
+            esp_zb_zcl_identify_effect_message_t *ie = (esp_zb_zcl_identify_effect_message_t *) message;
+            ESP_LOGI(TAG, "Identify: effect: %02x, variant: %02x", ie->effect_id, ie->effect_variant);
+            switch (ie->effect_id) {
+              case 0x00: // Blink
+                ret = light_driver_trigger_effect(LD_Effect_Blink);
+                break;
+              case 0x01: // Breathe
+                ret = light_driver_trigger_effect(LD_Effect_Breathe);
+                break;
+              case 0x02: // Okay
+                ret = light_driver_trigger_effect(LD_Effect_Okay);
+                break;
+              case 0x0b: // Channel change
+                ret = light_driver_trigger_effect(LD_Effect_ChannelChange);
+                break;
+              case 0xfe: // Finish effect
+                ret = light_driver_trigger_effect(LD_Effect_Finish);
+                break;
+              case 0xff: // Stop effect
+                ret = light_driver_trigger_effect(LD_Effect_Stop);
+                break;
+              default:
+                ESP_LOGW(TAG, "Identify effect %02x not supported, using default", ie->effect_id);
+                ret = light_driver_trigger_effect(LD_Effect_Blink);
+                break;
+            }
+            break;
         default:
             ESP_LOGW(TAG, "Received unhandled action callback: 0x%x", callback_id);
             break;
@@ -306,9 +341,39 @@ bool zb_raw_command_handler(uint8_t bufid) {
 
         if (cmd_info->cluster_id == ESP_ZB_ZCL_CLUSTER_ID_ON_OFF &&
                 cmd_info->cmd_id == ESP_ZB_ZCL_CMD_ON_OFF_OFF_WITH_EFFECT_ID) {
-               my_off_with_effect_cmd_req_t *req = (my_off_with_effect_cmd_req_t *)buf;
-               ESP_LOGI(TAG, "O.w.E. detected: effect: 0x%02x, variant: 0x%02x", req->effect_id, req->effect_variant);
-               // FIXME: Make use of this
+          my_off_with_effect_cmd_req_t *req = (my_off_with_effect_cmd_req_t *)buf;
+          ESP_LOGI(TAG, "O.w.E. detected: effect: 0x%02x, variant: 0x%02x", req->effect_id, req->effect_variant);
+          switch (req->effect_id) {
+            case 0x00: // Delayed All Off
+              switch (req->effect_variant) {
+                case 0x00: // LD_Effect_DelayedOff0
+                  owe_effect = LD_Effect_DelayedOff0;
+                  break;
+                case 0x01: // LD_Effect_DelayedOff1
+                  owe_effect = LD_Effect_DelayedOff1;
+                  break;
+                case 0x02: // LD_Effect_DelayedOff2
+                  owe_effect = LD_Effect_DelayedOff2;
+                  break;
+                default:
+                  // Not recognized (variant).
+                  owe_effect = LD_Effect_None;
+                  break;
+              }
+              break;
+            case 0x01: // Dying Light
+              if (req->effect_variant == 0x00) { // LD_Effect_DyingLight0
+                owe_effect = LD_Effect_DyingLight0;
+              } else {
+                // Not recognized (variant).
+                owe_effect = LD_Effect_None;
+              }
+              break;
+            default:
+              // Not recognized (effect).
+              owe_effect = LD_Effect_None;
+              break;
+          }
         }
     }
 

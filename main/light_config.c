@@ -14,6 +14,7 @@
 #include "esp_app_desc.h"
 #include "nvs.h"
 #include "delayed_save.h"
+#include "light_driver.h"
 
 #define LIGHT_CONFIG_NVS_NAMESPACE "light_config"
 #define STARTUP_ONOFF_TOGGLE 2
@@ -380,6 +381,10 @@ esp_err_t light_config_initialize() {
 }
 
 esp_err_t light_config_update(lc_flash_var_t key, uint32_t val) {
+    return light_config_update_with_effect(key, val, LD_Effect_None);
+}
+
+esp_err_t light_config_update_with_effect(lc_flash_var_t key, uint32_t val, ld_effect_type effect) {
     esp_err_t ret = ESP_OK;
 
     switch (key) {
@@ -389,7 +394,11 @@ esp_err_t light_config_update(lc_flash_var_t key, uint32_t val) {
                     light_config->startup_onoff == STARTUP_ONOFF_TOGGLE) {
                 trigger_delayed_save(DS_onoff);
             }
-            ret = light_driver_update();
+            if (effect != LD_Effect_None) {
+                ret = light_driver_trigger_effect(effect);
+            } else {
+                ret = light_driver_update();
+            }
             break;
         case LCFV_startup_onoff:
             light_config_rw.startup_onoff = val;
@@ -407,11 +416,15 @@ esp_err_t light_config_update(lc_flash_var_t key, uint32_t val) {
             }
             break;
         case LCFV_level:
-            light_config_rw.level = val;
-            if (light_config->startup_level == STARTUP_LEVEL_PREVIOUS) {
-                trigger_delayed_save(DS_level);
+            if (val == 0) {
+                ESP_LOGW(TAG, "Invalid level 0, skip.");
+            } else {
+                light_config_rw.level = val;
+                if (light_config->startup_level == STARTUP_LEVEL_PREVIOUS) {
+                    trigger_delayed_save(DS_level);
+                }
+                ret = light_driver_update();
             }
-            ret = light_driver_update();
             break;
         case LCFV_startup_level:
             light_config_rw.startup_level = val;

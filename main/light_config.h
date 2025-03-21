@@ -18,6 +18,7 @@ extern "C" {
 #include "esp_err.h"
 #include "esp_check.h"
 #include "esp_zigbee_core.h"
+#include "light_driver.h"
 
 // Light config for state tracking & zibgbee cluster creation
 typedef struct light_config_s {
@@ -92,6 +93,11 @@ esp_err_t light_config_initialize();
 
 // Update given writeable variable
 esp_err_t light_config_update(lc_flash_var_t key, uint32_t val);
+
+// Update given writeable variable, with effect
+//
+// Note: currently only LCVF_onoff implements effect trigger
+esp_err_t light_config_update_with_effect(lc_flash_var_t key, uint32_t val, ld_effect_type effect);
 
 #ifdef __cplusplus
 } // extern "C"
