@@ -8,7 +8,16 @@ This will be a firmware for my Hue White Ambiance replacement driver
 suitable for my "Beng Ceiling Light" from Philips.
 
 For background info see
-[Reversing Philips Hue light driver](https://wejn.org/2024/12/reversing-philips-hue-light-driver/).
+[Reversing Philips Hue light driver](https://wejn.org/2024/12/reversing-philips-hue-light-driver/),
+and [Introducing e32: firmware for esp32-c6 based White Ambiance
+light](https://wejn.org/2025/03/introducing-e32wamb-firmware-for-esp32-c6-based-white-ambiance/)
+in particular.
+
+The latter link explains a bit of the architecture of this firmware.
+
+## Known issues
+
+- No OTA support
 
 ## Compilation
 
