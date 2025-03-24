@@ -10,10 +10,6 @@
 
 #pragma once
 
-#include "esp_zigbee_core.h"
-#include "light_driver.h"
-#include "light_config.h"
-
 /* Zigbee configuration -- mainly used in main.c */
 #define MY_LIGHT_ENDPOINT 10
 

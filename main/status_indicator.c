@@ -5,11 +5,12 @@
  * This code is licensed under GPL version 3.
  */
 #include "esp_check.h"
-#include "esp_zigbee_core.h"
-#include "indicator_led.h"
-#include "status_indicator.h"
 #include "esp_timer.h"
+#include "esp_zigbee_core.h"
+
+#include "indicator_led.h"
 #include "main.h"
+#include "status_indicator.h"
 
 #define INDICATOR_REFRESH_MS 1000
 #define QUERYING_TIMEOUT 30 * 1000 * 1000 // s in μs

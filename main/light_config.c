@@ -4,16 +4,18 @@
  *
  * This code is licensed under GPL version 3.
  */
+#include <stdio.h>
+#include <string.h>
+
+#include "esp_app_desc.h"
 #include "esp_check.h"
-#include "stdio.h"
-#include "string.h"
+#include "esp_err.h"
+#include "ha/esp_zigbee_ha_standard.h"
+#include "nvs.h"
+
+#include "delayed_save.h"
 #include "global_config.h"
 #include "light_config.h"
-#include "ha/esp_zigbee_ha_standard.h"
-#include "esp_err.h"
-#include "esp_app_desc.h"
-#include "nvs.h"
-#include "delayed_save.h"
 #include "light_driver.h"
 
 #define LIGHT_CONFIG_NVS_NAMESPACE "light_config"

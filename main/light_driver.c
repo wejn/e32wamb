@@ -4,16 +4,17 @@
  *
  * This code is licensed under GPL version 3.
  */
+#include "driver/gpio.h"
+#include "driver/ledc.h"
 #include "esp_check.h"
+#include "esp_timer.h"
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
+
+#include "data_tables.h"
 #include "global_config.h"
 #include "light_config.h"
 #include "light_driver.h"
-#include "freertos/FreeRTOS.h"
-#include "freertos/task.h"
-#include "driver/gpio.h"
-#include "driver/ledc.h"
-#include "data_tables.h"
-#include "esp_timer.h"
 
 static const char *TAG = "LIGHT_DRIVER";
 static TaskHandle_t ld_task_handle;

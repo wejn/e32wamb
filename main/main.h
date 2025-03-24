@@ -13,7 +13,7 @@
 extern "C" {
 #endif
 
-#include "global_config.h"
+#include <stdint.h>
 
 // When was the last time our light endpoint was last queried.
 // Records timestamp from esp_timer_get_time(), initially zero.

@@ -5,21 +5,22 @@
  * This code is licensed under GPL version 3.
  * Originally forked from https://github.com/wejn/esp32-huello-world.
  */
-#include "main.h"
 #include "esp_check.h"
 #include "esp_log.h"
-#include "nvs_flash.h"
+#include "esp_timer.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "ha/esp_zigbee_ha_standard.h"
-#include "light_config.h"
-#include "delayed_save.h"
-#include "scenes.h"
-#include "light_driver.h"
-#include "status_indicator.h"
-#include "reset_button.h"
+#include "nvs_flash.h"
 #include "zboss_api.h"
-#include "esp_timer.h"
+
+#include "global_config.h"
+#include "light_config.h"
+#include "light_driver.h"
+#include "main.h"
+#include "reset_button.h"
+#include "scenes.h"
+#include "status_indicator.h"
 
 #if !defined CONFIG_ZB_ZCZR
 #error Define ZB_ZCZR in idf.py menuconfig to compile light (Router) source code.

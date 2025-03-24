@@ -4,15 +4,16 @@
  *
  * This code is licensed under GPL version 3.
  */
+#include "driver/gpio.h"
 #include "esp_check.h"
-#include "global_config.h"
-#include "reset_button.h"
+#include "esp_timer.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
-#include "driver/gpio.h"
-#include "esp_timer.h"
+
+#include "global_config.h"
 #include "indicator_led.h"
 #include "light_config.h"
+#include "reset_button.h"
 
 #define DEBOUNCE_DELAY_US 50 * 1000 // ms in μs
 #define LONG_PRESS_DELAY_US 5 * 1000 * 1000 // s in μs

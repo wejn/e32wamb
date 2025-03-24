@@ -4,12 +4,13 @@
  *
  * This code is licensed under GPL version 3.
  */
+#include <string.h>
+
 #include "esp_check.h"
-#include "string.h"
-#include "light_config.h"
-#include "delayed_save.h"
-#include "scenes.h"
 #include "esp_err.h"
+
+#include "light_config.h"
+#include "scenes.h"
 
 static const char *TAG = "SCENES";
 

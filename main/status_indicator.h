@@ -13,6 +13,8 @@
 extern "C" {
 #endif
 
+#include "esp_err.h"
+
 // Initialize status indicator (and dependencies)
 esp_err_t status_indicator_initialize();
 

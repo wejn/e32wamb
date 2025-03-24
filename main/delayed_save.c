@@ -5,11 +5,13 @@
  * This code is licensed under GPL version 3.
  */
 #include <stdint.h>
-#include "delayed_save.h"
-#include "light_config.h"
+
+#include "esp_timer.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
-#include "esp_timer.h"
+
+#include "delayed_save.h"
+#include "light_config.h"
 
 #define SUSPEND_MS 250 // how many ms to wait until re-trying save
 #define SAVE_EVERY 5 * 1000 * 1000 // 5 seconds ± SUSPEND_MS, actually

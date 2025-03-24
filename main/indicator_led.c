@@ -5,9 +5,10 @@
  * This code is licensed under GPL version 3.
  */
 #include "esp_check.h"
+#include "led_strip.h"
+
 #include "global_config.h"
 #include "indicator_led.h"
-#include "led_strip.h"
 
 static const char *TAG = "INDICATOR_LED";
 static TaskHandle_t il_task_handle;
