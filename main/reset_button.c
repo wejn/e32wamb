@@ -23,8 +23,7 @@ static TaskHandle_t rb_task_handle;
 volatile static bool rb_initialized = false;
 volatile static uint64_t press_time = 0;
 
-static void IRAM_ATTR gpio_isr_handler(void* arg)
-{
+static void IRAM_ATTR gpio_isr_handler(void* arg) {
     uint32_t gpio_state = gpio_get_level(RESET_BUTTON_GPIO);
 
     if (gpio_state == 1) { // Pulled up → released
@@ -42,7 +41,7 @@ static void IRAM_ATTR gpio_isr_handler(void* arg)
 
         }
     }
-    
+
 }
 
 static void reset_button_task(void *pvParameters) {

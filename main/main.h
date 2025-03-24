@@ -9,8 +9,16 @@
 
 #pragma once
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #include "global_config.h"
 
 // When was the last time our light endpoint was last queried.
 // Records timestamp from esp_timer_get_time(), initially zero.
 extern uint64_t light_endpoint_last_queried_time;
+
+#ifdef __cplusplus
+} // extern "C"
+#endif
