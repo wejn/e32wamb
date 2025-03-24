@@ -15,6 +15,10 @@ in particular.
 
 The latter link explains a bit of the architecture of this firmware.
 
+## License
+
+GPLv3 (mainly for stuff in `main/`), unless stated otherwise
+
 ## Known issues
 
 - No OTA support
