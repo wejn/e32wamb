@@ -22,6 +22,10 @@ GPLv3 (mainly for stuff in `main/`), unless stated otherwise
 ## Known issues
 
 - No OTA support
+- Transitions (fades) aren't γ-corrected
+
+See the [blog post](https://wejn.org/2025/03/introducing-e32wamb-firmware-for-esp32-c6-based-white-ambiance/)
+for background.
 
 ## Compilation
 
