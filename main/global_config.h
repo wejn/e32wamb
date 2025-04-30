@@ -59,11 +59,14 @@
     .couple_min_temperature = COLOR_MIN_TEMPERATURE, \
 }
 
-#define RESET_BUTTON_GPIO 9 // FIXME: you shall not use boot button for this
+#define RF_SWITCH_GPIO 14 // rf switch gpio (-1 to turn off)
+#define RF_SWITCH_LEVEL 1 // 0: built-in, 1: u.fl
 
-#define RGB_INDICATOR_GPIO 8
+#define RESET_BUTTON_GPIO 1
+
+#define RGB_INDICATOR_GPIO 0
 #define RGB_INDICATOR_MODEL LED_MODEL_WS2812
-#define RGB_INDICATOR_FORMAT LED_STRIP_COLOR_COMPONENT_FMT_RGB
+#define RGB_INDICATOR_FORMAT LED_STRIP_COLOR_COMPONENT_FMT_GRB
 #define RGB_INDICATOR_MAX_BRIGHTNESS 0.2
 
 #define MY_LIGHT_PWM_CH0_GPIO 18 // normal

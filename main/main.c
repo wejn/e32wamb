@@ -19,6 +19,7 @@
 #include "light_driver.h"
 #include "main.h"
 #include "reset_button.h"
+#include "rfswitch.h"
 #include "scenes.h"
 #include "status_indicator.h"
 
@@ -403,6 +404,7 @@ static void esp_zb_task(void *pvParameters) {
 void app_main(void) {
   ESP_ERROR_CHECK(status_indicator_initialize());
   ESP_ERROR_CHECK(reset_button_initialize());
+  ESP_ERROR_CHECK(rf_switch_initialize());
 
   esp_zb_platform_config_t config = {
     .radio_config = ESP_ZB_DEFAULT_RADIO_CONFIG(),
