@@ -297,6 +297,18 @@ esp_zb_cluster_list_t *light_config_clusters_create() {
     }
     ADD_OR_WARN(esp_zb_basic_cluster_add_attr, basic_attr, ESP_ZB_ZCL_ATTR_BASIC_DATE_CODE_ID, basic_info);
 
+    // RF switch external custom attrib
+    bool external = light_config_rw.rf_switch_external;
+    esp_err_t err = esp_zb_cluster_add_manufacturer_attr(basic_attr,
+            basic_attr->next->cluster_id,
+            MY_MANUF_ATTR_RF_SWITCH_EXTERNAL,
+            MY_MANUF_CODE, ESP_ZB_ZCL_ATTR_TYPE_BOOL,
+            ESP_ZB_ZCL_ATTR_ACCESS_READ_WRITE | ESP_ZB_ZCL_ATTR_MANUF_SPEC,
+            &external);
+    if (err != ESP_OK) {
+        ESP_LOGW(TAG, "Failed to add rf switch manuf attr: %s", esp_err_to_name(err));
+    }
+
     esp_zb_cluster_list_add_basic_cluster(cluster_list, basic_attr, ESP_ZB_ZCL_CLUSTER_SERVER_ROLE);
 
     // identify cluster

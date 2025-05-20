@@ -232,6 +232,20 @@ static esp_err_t color_attribute_handler(const esp_zb_zcl_set_attr_value_message
   return ESP_OK;
 }
 
+static esp_err_t basic_attribute_handler(const esp_zb_zcl_set_attr_value_message_t *message) {
+  switch (message->attribute.id) {
+    case MY_MANUF_ATTR_RF_SWITCH_EXTERNAL:
+      IF_ATTR_IS_TYPE_AND_PRESENT("basic", "rf_switch_external", ESP_ZB_ZCL_ATTR_TYPE_BOOL) {
+        light_config_update(LCFV_rf_switch_external, *(bool *)message->attribute.data.value);
+        ESP_LOGI(TAG, "RF switch change to %s", light_config->rf_switch_external ? "u.fl" : "built-in");
+      }
+      break;
+    default:
+      WARN_UNKNOWN("basic");
+  }
+  return ESP_OK;
+}
+
 static esp_err_t zb_attribute_handler(const esp_zb_zcl_set_attr_value_message_t *message) {
   ESP_RETURN_ON_FALSE(message, ESP_FAIL, TAG, "Empty message");
   ESP_RETURN_ON_FALSE(message->info.status == ESP_ZB_ZCL_STATUS_SUCCESS, ESP_ERR_INVALID_ARG, TAG, "Received message: error status: %d", message->info.status);
@@ -244,6 +258,8 @@ static esp_err_t zb_attribute_handler(const esp_zb_zcl_set_attr_value_message_t 
 
   // basic, identify, groups, scenes, onoff, level, color
   switch (message->info.cluster) {
+    case ESP_ZB_ZCL_CLUSTER_ID_BASIC:
+      return basic_attribute_handler(message);
     case ESP_ZB_ZCL_CLUSTER_ID_ON_OFF:
       return onoff_attribute_handler(message);
     case ESP_ZB_ZCL_CLUSTER_ID_LEVEL_CONTROL:

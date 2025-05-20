@@ -39,6 +39,10 @@
 #define COLOR_MIN_TEMPERATURE 153
 #define COLOR_MAX_TEMPERATURE 454
 
+// Custom attributes
+#define MY_MANUF_CODE 0x131B // Espressif; we can't use any other
+#define MY_MANUF_ATTR_RF_SWITCH_EXTERNAL 0x7a69 // manufacturer-specific attribute for RF switch external
+
 // XIAO rfswitch (antenna connector)
 #define RF_SWITCH_GPIO 14 // rf switch gpio (-1 to turn off)
 #define RF_SWITCH_EXTERNAL true // false: built-in, true: u.fl
