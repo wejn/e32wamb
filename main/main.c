@@ -401,6 +401,16 @@ static void esp_zb_task(void *pvParameters) {
   esp_zb_stack_main_loop();
 }
 
+static esp_err_t init_flash() {
+  esp_err_t ret = nvs_flash_init();
+  if (ret == ESP_ERR_NVS_NO_FREE_PAGES || ret == ESP_ERR_NVS_NEW_VERSION_FOUND) {
+    ESP_LOGW(TAG, "Flash unusable (%s), reinitializing", esp_err_to_name(ret));
+    ESP_ERROR_CHECK(nvs_flash_erase());
+    ret = nvs_flash_init();
+  }
+  return ret;
+}
+
 void app_main(void) {
   ESP_ERROR_CHECK(status_indicator_initialize());
   ESP_ERROR_CHECK(reset_button_initialize());
@@ -411,7 +421,8 @@ void app_main(void) {
     .host_config = ESP_ZB_DEFAULT_HOST_CONFIG(),
   };
 
-  ESP_ERROR_CHECK(nvs_flash_init());
+
+  ESP_ERROR_CHECK(init_flash());
   ESP_ERROR_CHECK(esp_zb_platform_config(&config));
   ESP_ERROR_CHECK(light_driver_initialize());
   ESP_ERROR_CHECK(light_config_initialize());
