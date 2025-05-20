@@ -96,6 +96,7 @@ esp_err_t light_config_persist_vars(lc_flash_var_t *vars, size_t num) {
     for (size_t i = 0; i < num; i++) {
         const char *ck = lc_flash_var_to_key(vars[i]);
         strncpy(k, ck, NVS_KEY_NAME_MAX_SIZE); // need to trim the key, sigh
+        k[NVS_KEY_NAME_MAX_SIZE-1] = 0; // the max length is NVS_KEY_NAME_MAX_SIZE-1
 
 #define LCFV_AS_LC_DEREF(NAME) case LCFV_##NAME: value = light_config->NAME; break;
         switch (vars[i]) {
@@ -130,6 +131,7 @@ static esp_err_t lc_read_var_from_flash(nvs_handle_t nvs_handle, lc_flash_var_t 
     const char *ck = lc_flash_var_to_key(key);
     char k[NVS_KEY_NAME_MAX_SIZE];
     strncpy(k, ck, NVS_KEY_NAME_MAX_SIZE); // need to trim the key, sigh
+    k[NVS_KEY_NAME_MAX_SIZE-1] = 0; // the max length is NVS_KEY_NAME_MAX_SIZE-1
 
     esp_err_t err = nvs_get_u32(nvs_handle, k, val);
     switch (err) {
