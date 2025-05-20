@@ -21,6 +21,8 @@ extern "C" {
 
 // Light config for state tracking & zibgbee cluster creation
 typedef struct light_config_s {
+    bool rf_switch_external; // external antenna (u.fl) for rfswitch
+
     // Basic cluster
     char *manufacturer_name; // [R] up to 32 bytes
     char *model_identifier; // [R] up to 32 bytes
@@ -53,6 +55,7 @@ extern const bool * const light_config_initialized;
 // All the flash variables we'll be storing (used for enum and to_string),
 // all of them will get stored in uint32_t. All generated with LCFV_ prefix.
 #define _LCFV_ITER(X) \
+    X(rf_switch_external) \
     X(onoff) \
     X(startup_onoff) \
     X(level_options) \

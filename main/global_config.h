@@ -39,8 +39,13 @@
 #define COLOR_MIN_TEMPERATURE 153
 #define COLOR_MAX_TEMPERATURE 454
 
+// XIAO rfswitch (antenna connector)
+#define RF_SWITCH_GPIO 14 // rf switch gpio (-1 to turn off)
+#define RF_SWITCH_EXTERNAL true // false: built-in, true: u.fl
+
 /* Used to initialize light_config_t in light_config.c */
 #define MY_LIGHT_CONFIG() { \
+    .rf_switch_external = RF_SWITCH_EXTERNAL, \
     .manufacturer_name = "wejn.org", \
     .model_identifier = "e32wamb", \
     .date_code = BUILD_DATE_CODE, \
@@ -58,9 +63,6 @@
     .max_temperature = COLOR_MAX_TEMPERATURE, \
     .couple_min_temperature = COLOR_MIN_TEMPERATURE, \
 }
-
-#define RF_SWITCH_GPIO 14 // rf switch gpio (-1 to turn off)
-#define RF_SWITCH_LEVEL 1 // 0: built-in, 1: u.fl
 
 #define RESET_BUTTON_GPIO 1
 

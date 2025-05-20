@@ -16,7 +16,10 @@ extern "C" {
 #include "esp_err.h"
 
 // Initialize the rf switch
-esp_err_t rf_switch_initialize();
+esp_err_t rf_switch_initialize(bool external);
+
+// Set the rf switch
+esp_err_t rf_switch_set(bool external);
 
 #ifdef __cplusplus
 } // extern "C"

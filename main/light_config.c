@@ -17,6 +17,7 @@
 #include "global_config.h"
 #include "light_config.h"
 #include "light_driver.h"
+#include "rfswitch.h"
 
 #define LIGHT_CONFIG_NVS_NAMESPACE "light_config"
 #define STARTUP_ONOFF_TOGGLE 2
@@ -155,6 +156,11 @@ esp_err_t lc_restore_cfg_from_flash() {
         ESP_LOGW(TAG, "can't access flash to restore settings: %s", esp_err_to_name(err));
         return err;
     }
+
+    // rf switch
+    val = light_config_rw.rf_switch_external;
+    lc_read_var_from_flash(nvs_handle, LCFV_rf_switch_external, &val);
+    light_config_rw.rf_switch_external = val;
 
     // onoff
     val = light_config_rw.startup_onoff;
@@ -379,6 +385,14 @@ esp_err_t light_config_initialize() {
         }
     }
 
+    err = rf_switch_initialize(light_config_rw.rf_switch_external);
+    if (err != ESP_OK) {
+        ESP_LOGW(TAG, "rf switch init failed: %s", esp_err_to_name(err));
+        if (ret == ESP_OK) {
+            ret = err;
+        }
+    }
+
     return ret;
 }
 
@@ -390,6 +404,11 @@ esp_err_t light_config_update_with_effect(lc_flash_var_t key, uint32_t val, ld_e
     esp_err_t ret = ESP_OK;
 
     switch (key) {
+        case LCFV_rf_switch_external:
+            light_config_rw.rf_switch_external = val;
+            rf_switch_set(light_config_rw.rf_switch_external);
+            light_config_persist_var(LCFV_rf_switch_external);
+            break;
         case LCFV_onoff:
             light_config_rw.onoff = val;
             if (light_config->startup_onoff == STARTUP_ONOFF_PREVIOUS ||

@@ -8,10 +8,11 @@
 #include "esp_check.h"
 
 #include "global_config.h"
+#include "rfswitch.h"
 
 static const char *TAG = "RF_SWITCH";
 
-esp_err_t rf_switch_initialize() {
+esp_err_t rf_switch_initialize(bool external) {
   esp_err_t ret = ESP_OK;
 
   if (RF_SWITCH_GPIO < 0) {
@@ -19,14 +20,14 @@ esp_err_t rf_switch_initialize() {
     return ESP_OK;
   }
 
-  ESP_LOGI(TAG, "configuring on gpio %d to %d", RF_SWITCH_GPIO, RF_SWITCH_LEVEL);
+  ESP_LOGI(TAG, "configuring on gpio %d", RF_SWITCH_GPIO);
 
   gpio_config_t io_conf = {
     .intr_type = GPIO_INTR_DISABLE,
     .mode = GPIO_MODE_OUTPUT,
     .pin_bit_mask = 1ULL<<RF_SWITCH_GPIO,
-    .pull_down_en = !RF_SWITCH_LEVEL,
-    .pull_up_en = RF_SWITCH_LEVEL,
+    .pull_down_en = !external,
+    .pull_up_en = external,
   };
 
   ret = gpio_config(&io_conf);
@@ -35,10 +36,15 @@ esp_err_t rf_switch_initialize() {
     return ret;
   }
 
-  ret = gpio_set_level(RF_SWITCH_GPIO, RF_SWITCH_LEVEL);
+  return rf_switch_set(external);
+}
+
+esp_err_t rf_switch_set(bool external) {
+  ESP_LOGI(TAG, "setting to %s antenna", external ? "u.fl" : "built-in");
+  esp_err_t ret = gpio_set_level(RF_SWITCH_GPIO, external);
+
   if (ret != ESP_OK) {
     ESP_LOGW(TAG, "can't set: %s", esp_err_to_name(ret));
-    return ret;
   }
 
   return ret;
