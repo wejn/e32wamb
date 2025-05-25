@@ -419,9 +419,14 @@ esp_err_t light_config_update_with_effect(lc_flash_var_t key, uint32_t val, ld_e
 
     switch (key) {
         case LCFV_rf_switch_external:
-            light_config_rw.rf_switch_external = val;
-            rf_switch_set(light_config_rw.rf_switch_external);
-            light_config_persist_var(LCFV_rf_switch_external);
+            if (light_config_rw.rf_switch_external == val) {
+                // already set: persist (→ set twice to the same value to persist)
+                light_config_persist_var(LCFV_rf_switch_external);
+            } else {
+                // change: switch without persisting
+                light_config_rw.rf_switch_external = val;
+                rf_switch_set(light_config_rw.rf_switch_external);
+            }
             break;
         case LCFV_onoff:
             light_config_rw.onoff = val;

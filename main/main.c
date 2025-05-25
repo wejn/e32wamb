@@ -236,8 +236,8 @@ static esp_err_t basic_attribute_handler(const esp_zb_zcl_set_attr_value_message
   switch (message->attribute.id) {
     case MY_MANUF_ATTR_RF_SWITCH_EXTERNAL:
       IF_ATTR_IS_TYPE_AND_PRESENT("basic", "rf_switch_external", ESP_ZB_ZCL_ATTR_TYPE_BOOL) {
-        light_config_update(LCFV_rf_switch_external, *(bool *)message->attribute.data.value);
         ESP_LOGI(TAG, "RF switch change to %s", light_config->rf_switch_external ? "u.fl" : "built-in");
+        light_config_update(LCFV_rf_switch_external, *(bool *)message->attribute.data.value);
       }
       break;
     default:
