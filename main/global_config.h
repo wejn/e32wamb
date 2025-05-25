@@ -42,6 +42,9 @@
 // Custom attributes
 #define MY_MANUF_CODE 0x131B // Espressif; we can't use any other
 #define MY_MANUF_ATTR_RF_SWITCH_EXTERNAL 0x7a69 // manufacturer-specific attribute for RF switch external
+#define MY_MANUF_CMD_MAGIC 0x1337c0d3 // magic token to avoid accidental activation (send in network order)
+#define MY_MANUF_CMD_REBOOT 0xaa // manufacturer-specific cmd: reboot (on basic cluster)
+#define MY_MANUF_CMD_CLEAR_NVS 0xb0 // manufacturer-specific cmd: clear nvs(on basic cluster)
 
 // XIAO rfswitch (antenna connector)
 #define RF_SWITCH_GPIO 14 // rf switch gpio (-1 to turn off)

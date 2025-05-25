@@ -13,6 +13,7 @@
 #include "ha/esp_zigbee_ha_standard.h"
 #include "nvs_flash.h"
 #include "zboss_api.h"
+#include "lwip/opt.h"
 
 #include "global_config.h"
 #include "light_config.h"
@@ -327,6 +328,45 @@ static esp_err_t zb_action_handler(esp_zb_core_action_callback_id_t callback_id,
   return ret;
 }
 
+static void delayed_reboot_task(void *pvParameters) {
+  ESP_LOGI(TAG, "Delayed reboot queued...");
+  vTaskDelay(500 / portTICK_PERIOD_MS);
+  ESP_LOGI(TAG, "Delayed reboot triggered...");
+  while (true) {
+    esp_restart();
+  }
+}
+
+static esp_err_t basic_cluster_manuf_specific_cmd_handler(uint8_t bufid, zb_zcl_parsed_hdr_t *cmd_info, const uint8_t *buf, zb_uint_t buflen) {
+  // ESP_LOG_BUFFER_HEXDUMP("basic_ms_cmd buf", buf, buflen, ESP_LOG_INFO);
+
+  switch (cmd_info->cmd_id) {
+    case MY_MANUF_CMD_REBOOT:
+      if (buflen != 4 || ntohl(*(uint32_t*)buf) != MY_MANUF_CMD_MAGIC) {
+        zb_zcl_send_default_handler(bufid, cmd_info, ZB_ZCL_STATUS_MALFORMED_CMD);
+      } else {
+        ESP_LOGW(TAG, "Executing reboot command (delayed)");
+        xTaskCreate(delayed_reboot_task, "delayed_reboot", 4096, NULL, 4, NULL);
+        zb_zcl_send_default_handler(bufid, cmd_info, ZB_ZCL_STATUS_SUCCESS);
+      }
+      break;
+    case MY_MANUF_CMD_CLEAR_NVS:
+      if (buflen != 4 || ntohl(*(uint32_t*)buf) != MY_MANUF_CMD_MAGIC) {
+        zb_zcl_send_default_handler(bufid, cmd_info, ZB_ZCL_STATUS_MALFORMED_CMD);
+      } else {
+        ESP_LOGW(TAG, "Executing clear nvs command");
+        light_config_erase_flash(); // erase all config from flash
+        zb_zcl_send_default_handler(bufid, cmd_info, ZB_ZCL_STATUS_SUCCESS);
+      }
+      break;
+    default:
+      zb_zcl_send_default_handler(bufid, cmd_info, ZB_ZCL_STATUS_UNSUP_MANUF_CLUST_CMD);
+      break;
+  }
+  return true;
+}
+
+
 typedef ZB_PACKED_PRE struct my_off_with_effect_cmd_req_s {
   zb_uint8_t effect_id; // Effect identifier
   zb_uint8_t effect_variant; // Effect variant
@@ -336,11 +376,27 @@ my_off_with_effect_cmd_req_t;
 bool zb_raw_command_handler(uint8_t bufid) {
   // Hello https://github.com/espressif/esp-zigbee-sdk/issues/597
 
-  uint8_t buf[zb_buf_len(bufid)];
+  zb_uint_t buflen = zb_buf_len(bufid);
+  uint8_t buf[buflen];
   zb_zcl_parsed_hdr_t *cmd_info = ZB_BUF_GET_PARAM(bufid, zb_zcl_parsed_hdr_t);
   memcpy(buf, zb_buf_begin(bufid), sizeof(buf));
 
   if (cmd_info->addr_data.common_data.dst_endpoint == MY_LIGHT_ENDPOINT) {
+    if (cmd_info->is_manuf_specific && cmd_info->manuf_specific == MY_MANUF_CODE &&
+        cmd_info->cmd_direction == ZB_ZCL_FRAME_DIRECTION_TO_SRV) {
+      // Manufacturer specific command (for us)
+
+      /*
+      ESP_LOGI(TAG, "MS: Endpoint: 0x%d, ClusterID: 0x%04x, CMD: 0x%02x, CC: %d, ...",
+          cmd_info->addr_data.common_data.dst_endpoint, cmd_info->cluster_id,
+          cmd_info->cmd_id, cmd_info->is_common_command);
+          */
+
+      if (cmd_info->cluster_id == ESP_ZB_ZCL_CLUSTER_ID_BASIC) {
+        return basic_cluster_manuf_specific_cmd_handler(bufid, cmd_info, buf, buflen);
+      }
+    }
+
     if (cmd_info->cmd_id == ZB_ZCL_CMD_READ_ATTRIB) {
       /*
          zb_zcl_read_attr_req_t *req = (zb_zcl_read_attr_req_t *)buf;
